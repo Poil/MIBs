@@ -1,0 +1,201 @@
+-- PICO Product Vendor MIB
+-- From file: "PICO-SMI-id"
+
+-- Copyright (c) NEC Corporation 2001-2013. All rights reserved.
+
+-- Update History
+--
+-- 2011/05/30  : R1.0 initial release
+--                    (Separate sysOjbectID form PICO-SMI)
+-- 2012/03/28  : R2.0  Added sysObjectID ix2215-Series
+-- 2013/10/11  : R3.0  Added sysObjectID ix2207-Series,hx2105-Series
+-- 2014/11/28  : R4.0  Added sysObjectID ix3015-Series
+-- 2015/04/14  : R5.0  Added sysObjectID rtu-b
+-- 2016/07/19  : R6.0  Added sysObjectID ix3315-Series
+-- 2017/06/05  : R7.0  Added sysObjectID ix2106-Series,cgw-Series
+-- 2018/05/08  : R8.0  Added sysObjectID rtu-2106
+-- 2018/10/03  : R9.0  Added sysObjectID ix2216-Series
+
+
+PICO-SMI-ID DEFINITIONS ::= BEGIN
+
+   IMPORTS
+	pico
+		FROM PICO-SMI
+	enterprises, NetworkAddress, IpAddress, Counter, Gauge,
+		TimeTicks
+		FROM RFC1155-SMI
+	PhysAddress, TimeStamp, DisplayString
+		FROM SNMPv2-TC
+	OBJECT-TYPE
+		FROM RFC-1212
+	TRAP-TYPE
+		FROM RFC-1215
+        Ipv6Address
+		FROM IPV6-TC;
+
+-- The following definition is privately defined for pico Private MIB
+
+-- sysObjectID 
+--
+--		The PICO Software Products.
+--
+
+   ix1000-Series     OBJECT IDENTIFIER ::= { pico 1 }
+   ix2010-Series     OBJECT IDENTIFIER ::= { pico 2 }
+   ag500-Series      OBJECT IDENTIFIER ::= { pico 3 }
+   ix2200-Series     OBJECT IDENTIFIER ::= { pico 4 }
+   ix2000-Series     OBJECT IDENTIFIER ::= { pico 5 }
+   ag400-Series      OBJECT IDENTIFIER ::= { pico 6 }
+   ix3000-Series     OBJECT IDENTIFIER ::= { pico 7 }
+   ix2004-Series     OBJECT IDENTIFIER ::= { pico 8 }
+   ag600-Series      OBJECT IDENTIFIER ::= { pico 9 }
+   ix3100-Series     OBJECT IDENTIFIER ::= { pico 10 }
+   ix2005-Series     OBJECT IDENTIFIER ::= { pico 11 }
+   rtu-Series        OBJECT IDENTIFIER ::= { pico 12 }
+   ix2025-Series     OBJECT IDENTIFIER ::= { pico 13 }
+   ix2105-Series     OBJECT IDENTIFIER ::= { pico 14 }
+-- reserved                                { pico 15 }
+   ix2215-Series     OBJECT IDENTIFIER ::= { pico 16 }
+-- reserved                                { pico 17 }
+   ix2207-Series     OBJECT IDENTIFIER ::= { pico 18 }
+   hx2105-Series     OBJECT IDENTIFIER ::= { pico 19 }
+   ix3015-Series     OBJECT IDENTIFIER ::= { pico 20 }
+   ix3315-Series     OBJECT IDENTIFIER ::= { pico 21 }
+   ix2106-Series     OBJECT IDENTIFIER ::= { pico 22 }
+   cgw-Series        OBJECT IDENTIFIER ::= { pico 23 }
+   ix2216-Series     OBJECT IDENTIFIER ::= { pico 24 }
+
+
+--
+-- This sysObjectID is based on IX1000 series.
+--
+   ix1010            OBJECT IDENTIFIER ::= { ix1000-Series 1 }
+   ix1020            OBJECT IDENTIFIER ::= { ix1000-Series 2 }
+   ix1050            OBJECT IDENTIFIER ::= { ix1000-Series 3 }
+   ix1011            OBJECT IDENTIFIER ::= { ix1000-Series 4 }
+   ix1035            OBJECT IDENTIFIER ::= { ix1000-Series 5 }
+   ix1035i           OBJECT IDENTIFIER ::= { ix1000-Series 6 }
+   ix1036            OBJECT IDENTIFIER ::= { ix1000-Series 7 }
+   ix1036i           OBJECT IDENTIFIER ::= { ix1000-Series 8 }
+
+--
+-- This sysObjectID is based on IX2010 series.
+--
+   ix2010            OBJECT IDENTIFIER ::= { ix2010-Series 1 }
+   ix2015            OBJECT IDENTIFIER ::= { ix2010-Series 2 }
+
+--
+--
+-- This sysObjectID is based on IX2025 series.
+--
+   ix2025            OBJECT IDENTIFIER ::= { ix2025-Series 1 }
+
+--
+--
+-- This sysObjectID is based on IX2215 series.
+--
+   ix2215            OBJECT IDENTIFIER ::= { ix2215-Series 1 }
+
+--
+--
+-- This sysObjectID is based on IX2215 series.
+--
+   ix2216            OBJECT IDENTIFIER ::= { ix2216-Series 1 }
+
+--
+--
+-- This sysObjectID is based on IX2207 series.
+--
+   ix2207            OBJECT IDENTIFIER ::= { ix2207-Series 1 }
+
+--
+-- This sysObjectID is based on IX2000 series.
+--
+   ix2003            OBJECT IDENTIFIER ::= { ix2000-Series 1 }
+
+--
+-- This sysObjectID is based on IX2004 series.
+--
+   ix2004            OBJECT IDENTIFIER ::= { ix2004-Series 1 }
+
+--
+-- This sysObjectID is based on IX2005 series.
+--
+   ix2005            OBJECT IDENTIFIER ::= { ix2005-Series 1 }
+
+--
+-- This sysObjectID is based on IX2105 series.
+--
+   ix2105            OBJECT IDENTIFIER ::= { ix2105-Series 1 }
+
+--
+-- This sysObjectID is based on IX2105 series.
+--
+   ix2106            OBJECT IDENTIFIER ::= { ix2106-Series 1 }
+
+--
+-- This sysObjectID is based on rtu series.
+--
+   rtu               OBJECT IDENTIFIER ::= { rtu-Series 1 }
+   rtu-b             OBJECT IDENTIFIER ::= { rtu-Series 2 }
+   rtu-2106          OBJECT IDENTIFIER ::= { rtu-Series 3 }
+
+--
+-- This sysObjectID is based on HX2105 series.
+--
+   hx2105            OBJECT IDENTIFIER ::= { hx2105-Series 1 }
+
+--
+-- This sysObjectID is based on IX2200 series.
+--
+   ix2200            OBJECT IDENTIFIER ::= { ix2200-Series 1 }
+
+--
+-- This sysObjectID is based on IX3000 series.
+--
+   ix3010            OBJECT IDENTIFIER ::= { ix3000-Series 1 }
+
+--
+-- This sysObjectID is based on IX3015 series.
+--
+   ix3015            OBJECT IDENTIFIER ::= { ix3015-Series 1 }
+
+--
+-- This sysObjectID is based on IX3100 series.
+--
+   ix3110            OBJECT IDENTIFIER ::= { ix3100-Series 1 }
+
+--
+-- This sysObjectID is based on IX3315 series.
+--
+   ix3315            OBJECT IDENTIFIER ::= { ix3315-Series 1 }
+
+--
+-- This sysObjectID is based on ag500 series.
+--
+   ag510             OBJECT IDENTIFIER ::= { ag500-Series 1 }
+   ag520             OBJECT IDENTIFIER ::= { ag500-Series 2 }
+   ag530             OBJECT IDENTIFIER ::= { ag500-Series 3 }
+   ag540             OBJECT IDENTIFIER ::= { ag500-Series 4 }
+   ag531             OBJECT IDENTIFIER ::= { ag500-Series 5 }
+
+--
+-- This sysObjectID is based on ag400 series.
+--
+   ag431             OBJECT IDENTIFIER ::= { ag400-Series 1 }
+
+--
+-- This sysObjectID is based on ag600 series.
+--
+   ag610             OBJECT IDENTIFIER ::= { ag600-Series 1 }
+   ag650             OBJECT IDENTIFIER ::= { ag600-Series 2 }
+   ag611             OBJECT IDENTIFIER ::= { ag600-Series 3 }
+   ag651             OBJECT IDENTIFIER ::= { ag600-Series 4 }
+
+--
+-- This sysObjectID is based on CGW series.
+--
+   cgw1              OBJECT IDENTIFIER ::= { cgw-Series 1 }
+
+END

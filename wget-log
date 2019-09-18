@@ -1,0 +1,15 @@
+--2019-09-17 10:07:32--  https://www.google.com/search?client=ubuntu
+Résolution de www.google.com (www.google.com)… 172.217.3.100, 2a00:1450:400a:801::2004
+Connexion à www.google.com (www.google.com)|172.217.3.100|:443… connecté.
+requête HTTP transmise, en attente de la réponse… 302 Found
+Emplacement : https://www.google.com/webhp?client=ubuntu [suivant]
+--2019-09-17 10:07:33--  https://www.google.com/webhp?client=ubuntu
+Réutilisation de la connexion existante à www.google.com:443.
+requête HTTP transmise, en attente de la réponse… 200 OK
+Taille : non indiqué [text/html]
+Enregistre : «search?client=ubuntu»
+
+search?client=ubuntu              [<=>                                             ]       0  --.-KB/s               search?client=ubuntu              [ <=>                                            ]  11,43K  --.-KB/s    ds 0,01s   
+
+2019-09-17 10:07:33 (941 KB/s) - «search?client=ubuntu» enregistré [11702]
+

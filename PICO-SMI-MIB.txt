@@ -1,0 +1,1496 @@
+-- PICO Product Vendor MIB
+-- From file: "PICO-SMI"
+
+-- Copyright (c) NEC Corporation 2001-2016. All rights reserved.
+
+-- Update History
+--
+-- 2002/12/20  : R0.1 Draft
+-- 2003/03/11  : R1.0 Initial release
+-- 2003/05/12  : R2.0 add ALBTRS Power and FAN MIB/Trap
+-- 2003/09/26  : R3.0 add sysObjectID ag431,ag531
+-- 2003/11/10  : R4.0 add sysObjectID ix2015,ix3010
+-- 2004/01/21  : R4.1 change picoFanRpm SYNTAX ( delete OutOfRange,rpm ) DESCRIPTION ( add comment )
+-- 2004/02/03  : R4.2 change Trap name(picoTemperatureRestoration,picoVoltageRestoration,picoFanRestoration
+--                                     picoPowerSupplyInserted,picoPowerSupplyRemoved)
+-- 2004/02/03  : R5.0 add Equipment Sched MIB, Equipment Heap memory MIB
+-- 2004/02/05  : R6.0 change picoSched MIB, picoHeap memory MIB
+--                    change SYNTAX picoXxxx -> PicoXxxx
+--                    change picoPowerSupplyType
+--                      SystemACPS(1)         -> systemACPS(1)
+--                      802dot3af-PoE-ACPS(2) -> ieee802dot3af-PoE-ACPS(2)
+--                    add IMPORT Gauge, etc.
+-- 2004/02/09  : R6.0a change nomal(1) -> normal(1)
+-- 2004/04/27  : R7.0 add picoLoginMIB, picoConfigEventMIB
+-- 2004/05/12  : R7.0a change picoLoginSessionTerminalType SYNTAX (add unknown)
+-- 2004/05/19  : R7.0b cosmetic change
+-- 2004/07/16  : R8.0 add picoExtIfMIB
+-- 2004/08/26  : R8.0a change PicoSwHubEntry -> picoExtIfEntry
+-- 2004/09/07  : R8.0b add picoExtIfLinkDown/picoExtIfLinkUp trap
+-- 2004/09/29  : R8.1 Added sysObjectID ix2004-Series,ag600-Series
+--                    Added IMPORTS DisplayString
+--                    Setted a range restriction (picoFanIndex,picoPowerSupplyIndex,picoExtIfInstalledSlot,picoExtIfIndex)
+--                    Changed Unsigned32 -> INTEGER
+--                    Corrected typo (s/picoExtIndex/picoExtIfIndex/) 
+-- 2005/01/31  : R9.0 Added  picoNetworkMonitorMIB
+-- 2005/02/28  : R9.1 Added sysObjectID ag611,ag650,ag651
+-- 2006/03/02  : R9.2 add picoSchedRtUtl1Hour(4)
+-- 2006/07/21  : R9.3 Added sysObjectID ix2005-Series
+-- 2007/06/26  : R9.4 Added sysObjectID ix3100-Series
+-- 2008/04/09  : R9.5 Added sysObjectID rtu-Series,ix2025-Series
+-- 2008/05/29  : R9.6 Added ethernet-csmacd(6) for picoExtIfType
+-- 2010/03/12  : R9.7 Added sysObjectID ix2105-Series
+-- 2010/09/08  : R9.8 Changed copyright
+-- 2010/11/09  : R10.0 Added picoIsdnMIB
+-- 2011/02/02  : R10.1 Changed picoLoginSessionTerminalType SYNTAX (console -> local, telnet -> remote)
+-- 2011/05/30  : R11.0 Separated sysObjectID 
+--                     Corrected typographic error (picoFanRpm,picoCelsius DESCRIPTION)
+-- 2011/08/18  : R12.0 Added picoNgnMIB
+--                     Added IMPORTS InterfaceIndex
+-- 2013/10/29  : R12.1 Added IMPORTS (ifIndex, isdnLapdOperStatus)
+-- 2013/12/17  : R13.0 Added picoPostMIB
+-- 2015/02/19  : R14.0 Added picoMobileMIB
+-- 2015/05/28  : R14.1 Corrected syntactic error (picoMobileMIB)
+-- 2015/06/08  : R15.0 add picoMobileDeviceDown/picoMobileDeviceUp/picoMobileSignalStatusChange Trap
+-- 2016/06/09  : R16.0 Changed picoHeapSize SYNTAX (INTEGER -> Gauge)
+-- 2017/07/07  : R17.0 Added picoIPv4MIB/picoIPv6MIB
+
+PICO-SMI DEFINITIONS ::= BEGIN
+
+   IMPORTS
+        enterprises, NetworkAddress, IpAddress, Counter, Gauge,
+                TimeTicks
+                FROM RFC1155-SMI
+        PhysAddress, TimeStamp, DisplayString
+                FROM SNMPv2-TC
+        OBJECT-TYPE
+                FROM RFC-1212
+        TRAP-TYPE
+                FROM RFC-1215
+        Ipv6Address
+                FROM IPV6-TC
+        ifIndex,
+        InterfaceIndex
+                FROM IF-MIB
+        isdnLapdOperStatus
+                FROM ISDN-MIB;
+
+-- The following definition is privately defined for pico Private MIB
+
+-- org         OBJECT IDENTIFIER     ::= { iso 3 }
+-- dod         OBJECT IDENTIFIER     ::= { org 6 }
+-- internet    OBJECT IDENTIFIER     ::= { dod 1 }
+-- private     OBJECT IDENTIFIER     ::= { internet 4 }
+-- enterprises OBJECT IDENTIFIER     ::= { private 1 }
+   nec         OBJECT IDENTIFIER     ::= { enterprises 119}
+
+
+-- sysObjectID 
+--
+--              The PICO Software Products.
+--
+
+   necProduct        OBJECT IDENTIFIER ::= { nec 1 }
+   pico              OBJECT IDENTIFIER ::= { necProduct 84 }
+
+-- nec MIB
+   nec-mib           OBJECT IDENTIFIER ::= { nec 2 }
+   necProductDepend  OBJECT IDENTIFIER ::= { nec-mib 3 }
+
+--
+-- pico Private MIB
+--
+   pico-mib          OBJECT IDENTIFIER ::= { necProductDepend 84 }
+   picoOriginal            OBJECT IDENTIFIER ::= { pico-mib 1 }
+   picoSystem              OBJECT IDENTIFIER ::= { pico-mib 2 }
+   picoIpSecFlowMonitorMIB OBJECT IDENTIFIER ::= { pico-mib 3 }
+   picoLoginMIB            OBJECT IDENTIFIER ::= { pico-mib 4 }
+   picoConfigEventMIB      OBJECT IDENTIFIER ::= { pico-mib 5 }
+   picoExtIfMIB            OBJECT IDENTIFIER ::= { pico-mib 6 }
+   picoNetworkMonitorMIB   OBJECT IDENTIFIER ::= { pico-mib 7 }
+   picoIsdnMIB             OBJECT IDENTIFIER ::= { pico-mib 8 }
+   picoNgnMIB              OBJECT IDENTIFIER ::= { pico-mib 9 }
+   picoPostMIB             OBJECT IDENTIFIER ::= { pico-mib 10 }
+   picoMobileMIB           OBJECT IDENTIFIER ::= { pico-mib 11 }
+   picoIPv4MIB             OBJECT IDENTIFIER ::= { pico-mib 12 }
+   picoIPv6MIB             OBJECT IDENTIFIER ::= { pico-mib 13 }
+
+--  Equipment Temperature MIB
+        picoTemperature OBJECT IDENTIFIER ::= { picoSystem 1 }
+
+        picoCelsius OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the temperature of the equipment inside,
+                         in degree (Celsius)."
+                ::= { picoTemperature 1 }
+
+        picoFahrenheit OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the temperature of the equipment inside,
+                         in degree (Fahrenheit)."
+                ::= { picoTemperature 2 }
+
+--  Equipment Voltage MIB
+        picoVoltage OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed voltage, in milli-volt (mV)."
+                ::= { picoSystem 2 }
+
+-- Fan module table
+        picoFanTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoFanEntry
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "The table of fan status."
+                ::= { picoSystem 3 }
+
+        picoFanEntry OBJECT-TYPE
+                SYNTAX  PicoFanEntry
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "Fan module entry."
+                INDEX   { picoFanIndex }
+                ::= { picoFanTable 1 }
+
+        PicoFanEntry ::=
+                SEQUENCE {
+                        picoFanIndex
+                                INTEGER,
+                        picoFanStatus
+                                INTEGER,
+                        picoFanRpm
+                                INTEGER
+                }
+
+        picoFanIndex OBJECT-TYPE
+                SYNTAX  INTEGER (1..64)
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "Unique index for each fan module."
+                ::= { picoFanEntry 1 }
+
+        picoFanStatus OBJECT-TYPE
+                SYNTAX  INTEGER { normal(1),failure(2) }
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "Status of a fan module"
+                ::= { picoFanEntry 2 }
+
+        picoFanRpm OBJECT-TYPE
+                SYNTAX  INTEGER 
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "Fan speed (Revolution Per Minutes). 
+                         picoFanRpm will be set to 0 if Fan speed is less than 5294(rpm)."
+                ::= { picoFanEntry 3 }
+
+-- PowerSupply module table
+        picoPowerSupplyTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoPowerSupplyEntry
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "The table of Power Supply module status."
+                ::= { picoSystem 4 }
+
+        picoPowerSupplyEntry OBJECT-TYPE
+                SYNTAX  PicoPowerSupplyEntry
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "System Power Supply module entry."
+                INDEX   { picoPowerSupplyIndex }
+                ::= { picoPowerSupplyTable 1 }
+
+        PicoPowerSupplyEntry ::=
+                SEQUENCE {
+                        picoPowerSupplyIndex
+                                INTEGER,
+                        picoPowerSupplyType
+                                INTEGER,
+                        picoPowerSupplyStatus
+                                INTEGER
+        }
+
+        picoPowerSupplyIndex OBJECT-TYPE
+                SYNTAX  INTEGER (1..16)
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "Unique index for each power supply module."
+                ::= { picoPowerSupplyEntry 1 }
+
+        picoPowerSupplyType OBJECT-TYPE
+                SYNTAX  INTEGER {
+                        notInstalled(0),
+                        systemACPS(1),
+                        ieee802dot3af-PoE-ACPS(2)
+                }
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        " Power supply module type."
+                ::= { picoPowerSupplyEntry 2 }
+
+        picoPowerSupplyStatus OBJECT-TYPE
+                SYNTAX  INTEGER { notInstalled(0),normal(1),failure(2) }
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "Status of a Power Supply module."
+                ::= { picoPowerSupplyEntry 3 }
+
+--  Equipment Sched MIB
+        picoSched       OBJECT IDENTIFIER ::= { picoSystem 5 }
+
+        picoSchedRtUtl1Sec OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed system utilization
+                         for last 1 second, in percent (%)."
+                ::= { picoSched 1 }
+
+        picoSchedRtUtl5Sec OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed system utilization
+                         for last 5 seconds, in percent (%)."
+                ::= { picoSched 2 }
+
+        picoSchedRtUtl1Min OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed system utilization
+                         for last 1 minute, in percent (%)."
+                ::= { picoSched 3 }
+
+        picoSchedRtUtl1Hour OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed system utilization
+                         for last 1 hour, in percent (%)."
+                ::= { picoSched 4 }
+
+-- Equipment Heap Memory MIB
+        picoHeap        OBJECT IDENTIFIER ::= { picoSystem 6 }
+
+        picoHeapSize OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed total heap size,
+                         in bytes."
+                ::= { picoHeap 1 }
+
+        picoHeapUtil OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Indicates the observed current heap utilization,
+                         in percent (%)."
+                ::= { picoHeap 2 }
+
+--  Equipment Login MIB    
+        picoLoginSessionTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoLoginSessionEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The table of login session."
+                ::= { picoLoginMIB 1 }
+
+        picoLoginSessionEntry OBJECT-TYPE
+                SYNTAX  PicoLoginSessionEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "Login session entry."
+                INDEX   { picoLoginSessionIndex }
+                ::= { picoLoginSessionTable 1 }
+
+        PicoLoginSessionEntry ::=
+                SEQUENCE {
+                        picoLoginSessionIndex
+                                INTEGER,
+                        picoLoginSessionStatus
+                                INTEGER,
+                        picoLoginSessionPrivilege
+                                INTEGER,
+                        picoLoginSessionProcessMode
+                                INTEGER,
+                        picoLoginSessionTerminalType
+                                INTEGER,
+                        picoLoginSessionPeerIpAddress
+                                IpAddress,
+                        picoLoginSessionPeerIpv6Address
+                                Ipv6Address
+                }
+
+        picoLoginSessionIndex OBJECT-TYPE
+                SYNTAX  INTEGER (1..2147483647)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "Unique index for each login."
+                ::= { picoLoginSessionEntry 1 }
+
+        picoLoginSessionStatus OBJECT-TYPE
+                SYNTAX  INTEGER { login(1), logout(2), fail(3) }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Status of a login session."
+                ::= { picoLoginSessionEntry 2 }
+
+        picoLoginSessionPrivilege OBJECT-TYPE
+                SYNTAX  INTEGER { administrator(1), monitor(2), operator(3), unknown(4) }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "User privilege of a login session."
+                ::= { picoLoginSessionEntry 3 }
+
+        picoLoginSessionProcessMode OBJECT-TYPE
+                SYNTAX  INTEGER { operation(1), configure(2) }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "User process status of a login session."
+                ::= { picoLoginSessionEntry 4 }
+
+        picoLoginSessionTerminalType OBJECT-TYPE
+                SYNTAX  INTEGER { unknown(1), local(2), remote(3) }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Terminal type of a login session."
+                ::= { picoLoginSessionEntry 5 }
+
+        picoLoginSessionPeerIpAddress OBJECT-TYPE
+                SYNTAX  IpAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Peer ipv4 address of a login session."
+                ::= { picoLoginSessionEntry 6 }
+
+        picoLoginSessionPeerIpv6Address OBJECT-TYPE
+                SYNTAX  Ipv6Address
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Peer ipv6 address of a login session."
+                ::= { picoLoginSessionEntry 7 }
+
+-- Equipment Configuration MIB
+        picoConfigType OBJECT-TYPE
+                SYNTAX  INTEGER { default-config(1), startup-config(2), license(3) }
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "Configuration type."
+                -- this object is used only for the trap 
+                ::= { picoConfigEventMIB 1 }
+
+        picoConfigEventType OBJECT-TYPE
+                SYNTAX  INTEGER { write(1), erase(2) }
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "Event type of configuration modified."
+                -- this object is used only for the trap 
+                ::= { picoConfigEventMIB 2 }
+
+--  Equipment Extension Card SwHub MIB    
+        picoExtIfTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoExtIfEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "A list of interface entries."
+                ::= { picoExtIfMIB 1 }
+
+        picoExtIfEntry OBJECT-TYPE
+                SYNTAX  PicoExtIfEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "An interface entry containing objects at the
+                         subnetwork layer and below for a particular
+                         interface."
+                INDEX   { picoExtIfInstalledSlot, picoExtIfIndex }
+                ::= { picoExtIfTable 1 }
+
+        PicoExtIfEntry ::=
+                SEQUENCE {
+                        picoExtIfInstalledSlot
+                                INTEGER,
+                        picoExtIfIndex
+                                INTEGER,
+                        picoExtIfDescr
+                                DisplayString,
+                        picoExtIfUpperLayer
+                                INTEGER,
+                        picoExtIfType
+                                INTEGER,
+                        picoExtIfSpeed
+                                INTEGER,
+                        picoExtIfDuplex
+                                INTEGER,
+                        picoExtIfEffectiveMtu
+                                INTEGER,
+                        picoExtIfPhysicalAddress
+                                PhysAddress,
+                        picoExtIfAdminStatus
+                                INTEGER,
+                        picoExtIfOperStatus
+                                INTEGER,
+                        picoExtIfLastChange
+                                TimeStamp
+                }
+
+        picoExtIfInstalledSlot OBJECT-TYPE
+                SYNTAX  INTEGER (1..16)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The slot number in which the extension card
+                         was installed."
+                ::= { picoExtIfEntry 1 }
+
+        picoExtIfIndex OBJECT-TYPE
+                SYNTAX  INTEGER (1..32)
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "A unique value for each extension card."
+                ::= { picoExtIfEntry 2 }
+
+        picoExtIfDescr OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "A textual string containing information
+                         about the interface."
+                ::= { picoExtIfEntry 3 }
+
+        picoExtIfUpperLayer OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Index of interface to upper layers."
+                ::= { picoExtIfEntry 4 }
+
+        picoExtIfType OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                ethernet-csmacd(6),
+                                fastEther(62)
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The type of interface,, distinguished according to
+                         the physical/link protocol(s) immediately `below'
+                         the network layer in the protocol stack."
+                ::= { picoExtIfEntry 5 }
+
+        picoExtIfSpeed OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "An estimate of the interface's current bandwidth
+                         in bits per second."
+                ::= { picoExtIfEntry 6 }
+
+        picoExtIfDuplex OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                halfduplex(1),
+                                fullduplex(2)
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The current mode of this link."
+                ::= { picoExtIfEntry 7 }
+
+        picoExtIfEffectiveMtu OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The size of the largest datagram which can be
+                         sent/received on the interface, specified in
+                         octets."
+                ::= { picoExtIfEntry 8 }
+
+        picoExtIfPhysicalAddress OBJECT-TYPE
+                SYNTAX  PhysAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The interface's address at the protocol layer
+                         immediately `below' the network layer in the
+                         protocol stack."
+                ::= { picoExtIfEntry 9 }
+
+        picoExtIfAdminStatus OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                up(1),       -- ready to pass packets
+                                down(2),
+                                testing(3)   -- in some test mode
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The desired state of the interface."
+                ::= { picoExtIfEntry 10 }
+
+        picoExtIfOperStatus OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                up(1),       -- ready to pass packets
+                                down(2),
+                                testing(3)   -- in some test mode
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The current operational state of the interface."
+                ::= { picoExtIfEntry 11 }
+
+        picoExtIfLastChange OBJECT-TYPE
+                SYNTAX  TimeStamp
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The value of sysUpTime at the time the interface
+                         entered its current operational state."
+                ::= { picoExtIfEntry 12 }
+
+--  Equipment Netmon MIB
+        picoNetmonMibObjects OBJECT IDENTIFIER ::= { picoNetworkMonitorMIB 1 }    
+        picoNetmonWatchgroupTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoNetmonWatchgroupEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The table of Netmon entry."
+                ::= { picoNetmonMibObjects 1 }
+
+        picoNetmonWatchgroupEntry OBJECT-TYPE
+                SYNTAX  PicoNetmonWatchgroupEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "Netmon Watchgroup entry."
+                INDEX   { picoNetmonWatchgroupIndex }
+                ::= { picoNetmonWatchgroupTable 1 }
+
+        PicoNetmonWatchgroupEntry ::=
+                SEQUENCE {
+                        picoNetmonWatchgroupIndex
+                                INTEGER,
+                        picoNetmonWatchgroupName
+                                DisplayString,
+                        picoNetmonWatchgroupSequenceNumber
+                                INTEGER,
+                        picoNetmonWatchgroupStatus
+                                INTEGER,
+                        picoNetmonWatchgroupVarianceCounts
+                                INTEGER
+                }
+
+        picoNetmonWatchgroupIndex OBJECT-TYPE
+                SYNTAX  INTEGER (1..2147483647)
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Unique index for each Netmon Watchgroup."
+                ::= { picoNetmonWatchgroupEntry 1 }
+
+        picoNetmonWatchgroupName OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Netmon Watchgroup Name."
+                ::= { picoNetmonWatchgroupEntry 2 }
+
+        picoNetmonWatchgroupSequenceNumber OBJECT-TYPE
+                SYNTAX  INTEGER (1..65535)
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Netmon Watchgroup sequence number."
+                ::= { picoNetmonWatchgroupEntry 3 }
+
+        picoNetmonWatchgroupStatus OBJECT-TYPE
+                SYNTAX  INTEGER {  normal(1), stand(2), disable(3) }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Status of a Netmon Watchgroup."
+                ::= { picoNetmonWatchgroupEntry 4 }
+
+        picoNetmonWatchgroupVarianceCounts OBJECT-TYPE
+                SYNTAX  INTEGER (1..65535)
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "Netmon Watchgroup variance statistics."
+                ::= { picoNetmonWatchgroupEntry 5 }
+
+--  ISDN MIB
+        picoIsdnMIBObjects OBJECT IDENTIFIER ::= { picoIsdnMIB 1 }
+
+
+--  NGN MIB
+ -- NGN information table
+        picoNgnMIBObjects OBJECT IDENTIFIER ::= { picoNgnMIB 1 }
+
+        picoNgnTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoNgnEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The table of the NGN entry."
+                ::= { picoNgnMIBObjects 1 }
+
+        picoNgnEntry OBJECT-TYPE
+                SYNTAX  PicoNgnEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "NGN entry."
+                INDEX   { picoNgnIfIndex }
+                ::= { picoNgnTable 1 }
+
+        PicoNgnEntry ::=
+                SEQUENCE {
+                        picoNgnIfIndex
+                                INTEGER,
+                        picoNgnType
+                                INTEGER,
+                        picoNgnIfType
+                                INTEGER,
+                        picoNgnStatus
+                                INTEGER,
+                        picoNgnSipServerIpAddress
+                                IpAddress,
+                        picoNgnSipUri
+                                DisplayString,
+                        picoNgnUpTime
+                                TimeTicks
+                }
+
+        picoNgnIfIndex OBJECT-TYPE
+                SYNTAX  InterfaceIndex
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The interface index value of the interface 
+                         for which NGN is enabled."
+                ::= { picoNgnEntry 1 }
+
+        picoNgnType OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                standard(1),
+                                numbergate(2)
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The mode of the NGN service can be:
+                            standard(1)   :NGN service is standard.
+                            numbergate(2) :NGN service is numbergate. 
+                        "
+                ::= { picoNgnEntry 2 }
+
+        picoNgnIfType OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                global(1),
+                                private(2)
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The type of the NGN interface can be:
+                            global(1) :NGN interface type is global.
+                            private(2):NGN interface type is private.
+                        "
+                ::= { picoNgnEntry 3 }
+
+        picoNgnStatus OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                notReady(1),
+                                initializing(2),
+                                registering(3),
+                                registered(4)
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The state of the NGN SIP-UA register can be:
+                            notReady(1)    :NGN service is not Ready.
+                            initializing(2):During initialization of the registration.
+                            registering(3) :During registration.
+                            registered(4)  :Registration complete.
+                        "
+                ::= { picoNgnEntry 4 }
+
+        picoNgnSipServerIpAddress OBJECT-TYPE
+                SYNTAX  IpAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The object of the SIP server address."
+                ::= { picoNgnEntry 5 }
+
+        picoNgnSipUri OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The object of the SIP URI."
+                ::= { picoNgnEntry 6 }
+
+        picoNgnUpTime OBJECT-TYPE
+                SYNTAX  TimeTicks
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The time elapsed since registered."
+                ::= { picoNgnEntry 7 }
+
+
+ -- VPN table
+        picoNgnVpnTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoNgnVpnEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The table of the NGN VPN entry."
+                ::= { picoNgnMIBObjects 2 }
+
+        picoNgnVpnEntry OBJECT-TYPE
+                SYNTAX  PicoNgnVpnEntry
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "Ngn VPN entry."
+                INDEX   { picoNgnVpnIfIndex }
+                ::= { picoNgnVpnTable 1 }
+
+        PicoNgnVpnEntry ::=
+                SEQUENCE {
+                        picoNgnVpnIfIndex
+                                INTEGER,
+                        picoNgnVpnStatus
+                                INTEGER,
+                        picoNgnVpnPeerAddress
+                                DisplayString,
+                        picoNgnVpnBandwidth
+                                INTEGER,
+                        picoNgnVpnUsedTime
+                                TimeTicks,
+                        picoNgnVpnSbcIpAddress
+                                IpAddress,
+                        picoNgnVpnSbcPort
+                                INTEGER
+                }
+
+        picoNgnVpnIfIndex OBJECT-TYPE
+                SYNTAX  InterfaceIndex
+                ACCESS  not-accessible
+                STATUS  mandatory
+                DESCRIPTION
+                        "The interface index value of the interface 
+                         for which NGN binding is enabled."
+                ::= { picoNgnVpnEntry 1 }
+
+        picoNgnVpnStatus OBJECT-TYPE
+                SYNTAX  INTEGER { 
+                                disconnected(1), 
+                                connecting(2), 
+                                connected(3) 
+                        }
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The state of the NGN SIP-UA session can be:
+                            disconnected(1):SIP session is disconnected.
+                            connecting(2)  :SIP session is connecting.
+                            connected(3)   :SIP session is established.
+                        "
+                ::= { picoNgnVpnEntry 2 }
+
+        picoNgnVpnPeerAddress OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The object of the NGN peer address."
+                ::= { picoNgnVpnEntry 3 }
+
+        picoNgnVpnBandwidth OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The object of the NGN session bandwidth."
+                ::= { picoNgnVpnEntry 4 }
+
+        picoNgnVpnUsedTime OBJECT-TYPE
+                SYNTAX  TimeTicks
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The time elapsed since this connected NGN session."
+                ::= { picoNgnVpnEntry 5 }
+
+        picoNgnVpnSbcIpAddress OBJECT-TYPE
+                SYNTAX  IpAddress
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The object of the NGN session SBC address."
+                ::= { picoNgnVpnEntry 6 }
+
+        picoNgnVpnSbcPort OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The object of the NGN session SBC port."
+                ::= { picoNgnVpnEntry 7 }
+
+--  POST-FAIL MIB
+
+   picoPostMIBObjects      OBJECT IDENTIFIER ::= { picoPostMIB 1 }
+
+   picoPostTable OBJECT-TYPE
+           SYNTAX  SEQUENCE OF PicoPostEntry
+           ACCESS  not-accessible
+           STATUS  mandatory
+           DESCRIPTION
+                   "The table of POST entry."
+           ::= { picoPostMIBObjects 1 }
+
+   picoPostEntry OBJECT-TYPE
+           SYNTAX  PicoPostEntry
+           ACCESS  not-accessible
+           STATUS  mandatory
+           DESCRIPTION
+                   "POST entry."
+           INDEX   { picoPostIndex }
+           ::= { picoPostTable 1 }
+
+   PicoPostEntry ::=
+           SEQUENCE {
+                   picoPostIndex
+                           INTEGER,
+                   picoPostFail
+                           DisplayString
+           }
+
+   picoPostIndex OBJECT-TYPE
+           SYNTAX  INTEGER (1..2147483647)
+           ACCESS  read-only
+           STATUS  mandatory
+           DESCRIPTION
+                   "Unique index for each POST."
+           ::= { picoPostEntry 1 }
+
+   picoPostFail OBJECT-TYPE
+           SYNTAX      DisplayString (SIZE (0..255))
+           ACCESS      read-only
+           STATUS      mandatory
+           DESCRIPTION
+                   "POST fail information"
+           ::= { picoPostEntry 2 }
+
+--  Mobile MIB
+        picoMobileMIBObjects OBJECT IDENTIFIER ::= { picoMobileMIB 1 }
+
+ -- Mobile device table
+        picoMobileDeviceTable OBJECT-TYPE
+                SYNTAX  SEQUENCE OF PicoMobileDeviceEntry
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "The table of the Mobile device entry."
+                ::= { picoMobileMIBObjects 1 }
+
+        picoMobileDeviceEntry OBJECT-TYPE
+                SYNTAX  PicoMobileDeviceEntry
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "Mobile device entry."
+                INDEX   { picoMobileDeviceIndex }
+                ::= { picoMobileDeviceTable 1 }
+
+        PicoMobileDeviceEntry ::=
+                SEQUENCE {
+                        picoMobileDeviceIndex
+                                INTEGER,
+                        picoMobileDeviceVendorName
+                                DisplayString,
+                        picoMobileDeviceName
+                                DisplayString,
+                        picoMobileDeviceProductID
+                                DisplayString,
+                        picoMobileDeviceSoftwareVersion
+                                DisplayString,
+                        picoMobileDeviceSignalBar
+                                INTEGER,
+                        picoMobileDeviceSignalStrength
+                                INTEGER,
+                        picoMobileDeviceSignalQuality
+                                DisplayString,
+                        picoMobileDeviceSignalElapsedTime 
+                                TimeTicks,
+                        picoMobileDeviceRadioInterface
+                                DisplayString,
+                        picoMobileDeviceCarrier
+                                DisplayString,
+                        picoMobileDeviceDialerString
+                                DisplayString,
+                        picoMobileDeviceDialStatus
+                                INTEGER,
+                        picoMobileDeviceInRangeCounts
+                                Gauge,
+                        picoMobileDeviceOutRangeCounts
+                                Gauge,
+                        picoMobileDeviceResetCounts
+                                Gauge
+                }
+
+        picoMobileDeviceIndex OBJECT-TYPE
+                SYNTAX  INTEGER (1..2)
+                ACCESS  not-accessible
+                STATUS  optional
+                DESCRIPTION
+                        "The unique index for each Mobile module."
+                ::= { picoMobileDeviceEntry 1 }
+
+        picoMobileDeviceVendorName OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the vendor name."
+                ::= { picoMobileDeviceEntry 2 }
+
+        picoMobileDeviceName OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the device name."
+                ::= { picoMobileDeviceEntry 3 }
+
+        picoMobileDeviceProductID OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the product ID."
+                ::= { picoMobileDeviceEntry 4 }
+
+        picoMobileDeviceSoftwareVersion OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the software version."
+                ::= { picoMobileDeviceEntry 5 }
+
+        picoMobileDeviceSignalBar OBJECT-TYPE
+                SYNTAX  INTEGER
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the signal bar."
+                ::= { picoMobileDeviceEntry 6 }
+
+        picoMobileDeviceSignalStrength OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                unknown(-1),
+                                out-range(0),
+                                weak(1),
+                                low(2),
+                                high(3)
+                        }
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The signal strength can be:
+                            unknown(-1) :signal strength is unknown
+                            out-range(0):signal strength is 0
+                            weak(1)     :signal strength is 1
+                            low(2)      :signal strength is 2
+                            high(3)     :signal strength is 3
+                        "
+                ::= { picoMobileDeviceEntry 7 }
+
+        picoMobileDeviceSignalQuality OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the signal quality."
+                ::= { picoMobileDeviceEntry 8 }
+
+        picoMobileDeviceSignalElapsedTime OBJECT-TYPE
+                SYNTAX  TimeTicks
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the elapsed time after signal acquiring."
+                ::= { picoMobileDeviceEntry 9 }
+
+        picoMobileDeviceRadioInterface OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the radio interface."
+                ::= { picoMobileDeviceEntry 10 }
+
+        picoMobileDeviceCarrier OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the carrier name."
+                ::= { picoMobileDeviceEntry 11 }
+
+        picoMobileDeviceDialerString OBJECT-TYPE
+                SYNTAX  DisplayString (SIZE (0..255))
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The object of the dialer string."
+                ::= { picoMobileDeviceEntry 12 }
+
+        picoMobileDeviceDialStatus OBJECT-TYPE
+                SYNTAX  INTEGER {
+                                disconnected(0),
+                                connect(1),
+                                cancel(2),
+                                connected(3),
+                                postprocess(4)
+                        }
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The dial status can be:
+                            disconnected(0):dial status is disconnected.
+                            connect(1)     :dial status is connecting.
+                            cancel(2)      :dial status is canceling.
+                            connected(3)   :dial status is connected.
+                            postprocess(4) :dial status is postprocess.
+                        "
+                ::= { picoMobileDeviceEntry 13 }
+
+        picoMobileDeviceInRangeCounts OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The in-range statistics."
+                ::= { picoMobileDeviceEntry 14 }
+
+        picoMobileDeviceOutRangeCounts OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The out-range statistics."
+                ::= { picoMobileDeviceEntry 15 }
+
+        picoMobileDeviceResetCounts OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  optional
+                DESCRIPTION
+                        "The reset device statistics."
+                ::= { picoMobileDeviceEntry 16 }
+
+--  IPv4 MIB
+ -- IPv4 Cache MIB
+        picoIPv4Cache OBJECT IDENTIFIER ::= { picoIPv4MIB 1 }
+
+        picoIPv4CacheEntries OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The number of current IPv4 cache."
+                ::= { picoIPv4Cache 1 }
+
+        picoIPv4CachePeaks OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The peak value of IPv4 cache."
+                ::= { picoIPv4Cache 2 }
+
+        picoIPv4CacheCreates OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of created IPv4 cache."
+                ::= { picoIPv4Cache 3 }
+
+        picoIPv4CacheOverflows OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of IPv4 cache overflow."
+                ::= { picoIPv4Cache 4 }
+
+ -- IPv4 UFS Cache MIB
+        picoIPv4UFSCache OBJECT IDENTIFIER ::= { picoIPv4MIB 2 }
+
+        picoIPv4UFSCacheEntries OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The number of current IPv4 UFS cache.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv4UFSCache 1 }
+
+        picoIPv4UFSCachePeaks OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The peak value of IPv4 UFS cache.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv4UFSCache 2 }
+
+        picoIPv4UFSCacheCreates OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of created IPv4 UFS cache.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv4UFSCache 3 }
+
+        picoIPv4UFSCacheOverflows OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of IPv4 UFS cache overflow.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv4UFSCache 4 }
+
+--  IPv6 MIB
+ -- IPv6 Cache MIB
+        picoIPv6Cache OBJECT IDENTIFIER ::= { picoIPv6MIB 1 }
+
+        picoIPv6CacheEntries OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The number of current IPv6 cache."
+                ::= { picoIPv6Cache 1 }
+
+        picoIPv6CachePeaks OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The peak value of IPv6 cache."
+                ::= { picoIPv6Cache 2 }
+
+        picoIPv6CacheCreates OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of created IPv6 cache."
+                ::= { picoIPv6Cache 3 }
+
+        picoIPv6CacheOverflows OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of IPv6 cache overflow."
+                ::= { picoIPv6Cache 4 }
+
+ -- IPv6 UFS Cache MIB
+        picoIPv6UFSCache OBJECT IDENTIFIER ::= { picoIPv6MIB 2 }
+
+        picoIPv6UFSCacheEntries OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The number of current IPv6 UFS cache.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv6UFSCache 1 }
+
+        picoIPv6UFSCachePeaks OBJECT-TYPE
+                SYNTAX  Gauge
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The peak value of IPv6 UFS cache.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv6UFSCache 2 }
+
+        picoIPv6UFSCacheCreates OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of created IPv6 UFS cache.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv6UFSCache 3 }
+
+        picoIPv6UFSCacheOverflows OBJECT-TYPE
+                SYNTAX  Counter
+                ACCESS  read-only
+                STATUS  mandatory
+                DESCRIPTION
+                        "The total count of IPv6 UFS cache overflow.
+                         If UFS cache is disable, this value is 0."
+                ::= { picoIPv6UFSCache 4 }
+
+-- 
+--              TRAP Definitions
+-- 
+
+picoTemperatureFault TRAP-TYPE
+        ENTERPRISE      pico
+        DESCRIPTION
+                "Detect a temperature failure"
+        ::= 3
+
+picoTemperatureRestoration TRAP-TYPE
+        ENTERPRISE      pico
+        DESCRIPTION
+                "Detect the restoration of temperature"
+        ::= 4
+
+picoVoltageFault TRAP-TYPE
+        ENTERPRISE      pico
+        DESCRIPTION
+                "Detect a voltage failure"
+        ::= 5
+
+picoVoltageRestoration TRAP-TYPE
+        ENTERPRISE      pico
+        DESCRIPTION
+                "Detect the restoration of voltage"
+        ::= 6
+
+picoFanFault TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoFanIndex }
+        DESCRIPTION
+                "Detect a cooling fan failure"
+        ::= 7
+
+picoFanRestoration TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoFanIndex }
+        DESCRIPTION
+                "Detect the restoration of cooling fan"
+        ::= 8
+
+picoPowerSupplyFault TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoPowerSupplyIndex,
+                          picoPowerSupplyType }
+        DESCRIPTION
+                "Detect a Power Supply Module failure"
+        ::= 9
+
+picoPowerSupplyRestoration TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoPowerSupplyIndex,
+                          picoPowerSupplyType }
+        DESCRIPTION
+                "Detect the restoration of Power Supply Module"
+        ::= 10
+
+picoPowerSupplyInserted TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoPowerSupplyIndex,
+                          picoPowerSupplyType }
+        DESCRIPTION
+                "Detect a Power Supply Module inserted"
+        ::= 11
+
+picoPowerSupplyRemoved TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoPowerSupplyIndex,
+                          picoPowerSupplyType }
+        DESCRIPTION
+                "Detect a Power Supply Module removed"
+        ::= 12
+
+picoLoginSession TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoLoginSessionStatus,
+                          picoLoginSessionPrivilege, picoLoginSessionTerminalType,
+                          picoLoginSessionPeerIpAddress,
+                          picoLoginSessionPeerIpv6Address }
+        DESCRIPTION
+                "This notification is user login status"
+        ::= 13
+
+picoLoginFailure TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoLoginSessionStatus,
+                          picoLoginSessionPrivilege, picoLoginSessionTerminalType,
+                          picoLoginSessionPeerIpAddress,
+                          picoLoginSessionPeerIpv6Address }
+        DESCRIPTION
+                "This notification is login authentication fail"
+        ::= 14
+
+picoConfigMode TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoLoginSessionProcessMode,
+                          picoLoginSessionTerminalType,
+                          picoLoginSessionPeerIpAddress,
+                          picoLoginSessionPeerIpv6Address }
+        DESCRIPTION
+                "This notification is config process status."
+        ::= 15
+
+picoConfigModified TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoConfigType, picoConfigEventType,
+                          picoLoginSessionTerminalType,
+                          picoLoginSessionPeerIpAddress,
+                          picoLoginSessionPeerIpv6Address }
+        DESCRIPTION
+                "This notification is configuration modified status."
+        ::= 16
+
+picoExtIfLinkDown TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoExtIfAdminStatus, picoExtIfOperStatus }
+        DESCRIPTION
+                "This notification is port link down status."
+        ::= 17
+
+picoExtIfLinkUp TRAP-TYPE
+        ENTERPRISE      pico
+        VARIABLES       { picoExtIfAdminStatus, picoExtIfOperStatus }
+        DESCRIPTION
+                "This notification is port link up status."
+        ::= 18
+-- ++++++++++++
+-- Netmon Traps
+-- ++++++++++++
+picoNetmonMIBNotificationPrefix OBJECT IDENTIFIER ::= { picoNetworkMonitorMIB 2 }    
+picoNetmonMIBNotifications OBJECT IDENTIFIER ::= { picoNetmonMIBNotificationPrefix 0 }
+
+picoNetMonWatchGroupStatusChange TRAP-TYPE
+        ENTERPRISE      picoNetmonMIBNotificationPrefix
+        VARIABLES       { picoNetmonWatchgroupName, picoNetmonWatchgroupSequenceNumber , picoNetmonWatchgroupStatus}
+        DESCRIPTION
+                "This notification is Netmon Watchgroup status change."
+        ::= 1
+
+-- ++++++++++++
+-- ISDN Traps
+-- ++++++++++++
+picoIsdnMIBNotificationPrefix OBJECT IDENTIFIER ::= { picoIsdnMIB 2 }
+picoIsdnMIBNotifications OBJECT IDENTIFIER ::= { picoIsdnMIBNotificationPrefix 0 }
+
+picoIsdnLapdOperStatusChange TRAP-TYPE
+        ENTERPRISE      picoIsdnMIBNotificationPrefix
+        VARIABLES       { ifIndex, isdnLapdOperStatus }
+        DESCRIPTION
+                "This trap/inform is sent to the manager whenever the
+                 D-channel of an interface changes state."
+        ::= 3
+
+-- +++++++++++++++
+-- POST-FAIL Traps
+-- +++++++++++++++
+picoPostMIBNotificationPrefix OBJECT IDENTIFIER ::= { picoPostMIB 2 }
+picoPostMIBNotifications OBJECT IDENTIFIER ::= { picoPostMIBNotificationPrefix 0 }
+
+picoPostFailMessage TRAP-TYPE
+        ENTERPRISE      picoPostMIBNotificationPrefix
+        VARIABLES       { picoPostFail }
+        DESCRIPTION
+                "This trap/inform is sent to the manager whenever POST
+                 fail occured."
+        ::= 1
+
+-- +++++++++++++++
+-- Mobile Traps
+-- +++++++++++++++
+picoMobileMIBNotificationPrefix OBJECT IDENTIFIER ::= { picoMobileMIB 2 }
+picoMobileMIBNotifications OBJECT IDENTIFIER ::= { picoMobileMIBNotificationPrefix 0 }
+
+picoMobileDeviceDown TRAP-TYPE
+        ENTERPRISE      picoMobileMIBNotificationPrefix
+        VARIABLES       { picoMobileDeviceIndex, picoMobileDeviceName }
+        DESCRIPTION
+                "This notification is port down status of USB device."
+        ::= 1
+
+picoMobileDeviceUp TRAP-TYPE
+        ENTERPRISE      picoMobileMIBNotificationPrefix
+        VARIABLES       { picoMobileDeviceIndex, picoMobileDeviceName }
+        DESCRIPTION
+                "This notification is port up status of USB device."
+        ::= 2
+
+picoMobileSignalStatusChange TRAP-TYPE
+        ENTERPRISE      picoMobileMIBNotificationPrefix
+        VARIABLES       { picoMobileDeviceIndex, 
+                          picoMobileDeviceSignalBar,
+                          picoMobileDeviceSignalStrength,
+                          picoMobileDeviceSignalQuality,
+                          picoMobileDeviceRadioInterface }
+        DESCRIPTION
+                "This notification is the signal status changed."
+        ::= 3
+
+END

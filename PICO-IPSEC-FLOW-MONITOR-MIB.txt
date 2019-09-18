@@ -1,0 +1,2437 @@
+-- PICO IPsec Flow Monitor Product Vendor MIB
+-- From file: "PICO-IPSEC-FLOW-MONITOR-MIB"
+
+-- Copyright (c) 2001-2013 NEC Infrontia All Rights Reserved.
+
+-- Update History
+--
+-- 2002/12/20  : R0.1 draft
+-- 2003/03/11  : R1.0 initial release
+-- 2008/10/20  : R1.1 change EncryptAlgo des3->3des
+-- 2010/11/01  : R1.2 add sha2 to IkeHashAlgo,AuthAlgo
+-- 2011/03/23  : R1.3 add null to EncryptAlgo
+-- 2013/12/12  : R1.4 change EncryptAlgo 3des->des3
+
+PICO-IPSEC-FLOW-MONITOR-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+    picoIpSecFlowMonitorMIB
+        FROM PICO-SMI
+    OBJECT-TYPE
+        FROM RFC-1212
+    TRAP-TYPE
+        FROM RFC-1215
+    Counter, Gauge, enterprises
+        FROM RFC1155-SMI
+    DisplayString, TimeInterval, TimeStamp, TruthValue
+        FROM SNMPv2-TC;
+
+--
+-- Local Textual Conventions
+--
+IPSIpAddress ::= OCTET STRING (SIZE(4 | 16))
+
+IkePeerType ::= INTEGER {
+	idIpv4Addr(1),
+	idFqdn(2),
+	idDn(3),
+	idIpv6Addr(4)
+	}
+
+IkeNegoMode ::= INTEGER {
+	main(1),
+	aggressive(2)
+	}
+
+IkeHashAlgo ::= INTEGER {
+	none(1),
+	md5(2),
+	sha(3),
+	sha2-256(4),
+	sha2-384(5),
+	sha2-512(6)
+	}
+
+IkeAuthMethod ::= INTEGER {
+        none(1),
+        preSharedKey(2),
+        rsaSig(3),
+        rsaEncrypt(4),
+        revPublicKey(5)
+        }
+
+DiffHellmanGrp ::= INTEGER {
+	none(1),
+	modp768(2),
+	modp1024(3),
+	modp1536(4),
+	modp2048(5)
+	}
+
+KeyType ::= INTEGER {
+        ike(1),
+        manual(2)
+        }
+
+EncapMode ::= INTEGER {
+	tunnel(1),
+	transport(2)
+	}
+
+EncryptAlgo ::= INTEGER {
+        none(1),
+        des(2),
+        des3(3),
+        aes(4),
+        null(9)
+        }
+
+AuthAlgo ::= INTEGER {
+	none(1),
+	hmacMd5(2),
+	hmacSha(3),
+	hmacSha2-256(4),
+	hmacSha2-384(5),
+	hmacSha2-512(6)
+	}
+
+EndPtType ::= INTEGER {
+	idIpv4Addr(1),
+	idFqdn(2),
+	idUserFqdn(3),
+	idIpv4AddrSubnet(4),
+	idIpv6Addr(5), 
+	idIpv6AddrSubnet(6),
+	idIpv4AddrRange(7), 
+	idIpv6AddrRange(8),
+	idDerAsn1Dn(9),
+	idDerAsn1Gn(10),
+	idKeyId(11)
+	}
+
+TunnelStatus ::= INTEGER {
+        active(1),
+        destroy(2)
+        }
+
+TrapStatus ::= INTEGER {
+	nabled(1),
+	disabled(2)
+	}
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- IPsec MIB Object Groups
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+pipSecMIBObjects OBJECT IDENTIFIER ::= { picoIpSecFlowMonitorMIB 1 }
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- IPsec Levels Group
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+pipSecLevels OBJECT IDENTIFIER ::= { pipSecMIBObjects 1 }
+
+pipSecMibLevel OBJECT-TYPE
+    SYNTAX      INTEGER (1..4096)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The version of the IPsec MIB."
+    ::= { pipSecLevels 1 }
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- The IPsec Phase-1 Internet Key Exchange (IKE) Group
+--
+-- This group consists of:
+-- 1) IPsec Phase-1 Global Statistics
+-- 2) IPsec Phase-1 Peer Table
+-- 3) IPsec Phase-1 Tunnel Table
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+pipSecPhaseOne OBJECT IDENTIFIER ::= { pipSecMIBObjects 2 }
+
+--
+-- The IPsec Phase-1 Global Statistics
+--
+pikeGlobalStats OBJECT IDENTIFIER ::= { pipSecPhaseOne 1 }
+
+pikeGlobalActiveTunnels OBJECT-TYPE
+    SYNTAX      Gauge
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The number of currently active IPsec
+         Phase-1 IKE Tunnels. This is equal to the
+         number of ISAKMP SAs currently active."
+    ::= { pikeGlobalStats 1 }
+
+pikeGlobalInNotifys OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of notifys received by
+         all currently and previously active IPsec
+         Phase-1 IKE Tunnels."
+    ::= { pikeGlobalStats 6 }
+
+pikeGlobalInP2Exchgs OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         received by all currently and previously
+         active IPsec Phase-1 IKE Tunnels."
+    ::= { pikeGlobalStats 7 }
+
+pikeGlobalInP2ExchgInvalids OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         which were received and found to be contain
+         references to unrecognized security parameters.
+         This value is accumulated across all currently
+         and previously active IPsec ISAKMP SAs."
+    ::= { pikeGlobalStats 8 }
+
+pikeGlobalInP2ExchgRejects OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         which were received and validated but were
+         rejected by the local policy. This value is
+         accumulated across all currently and previously
+         active IPsec ISAKMP SAs."
+    ::= { pikeGlobalStats 9 }
+
+pikeGlobalInP2SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 security
+         association delete requests received by all
+         currently and previously
+          active and IPsec Phase-1 IKE Tunnels."
+    ::= { pikeGlobalStats 10 }
+
+pikeGlobalOutNotifys OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of notifys sent by all currently
+         and previously active IPsec Phase-1 IKE Tunnels."
+    ::= { pikeGlobalStats 14 }
+
+pikeGlobalOutP2Exchgs OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         which were sent by all currently and previously
+         active IPsec Phase-1 IKE Tunnels."
+    ::= { pikeGlobalStats 15 }
+
+pikeGlobalOutP2ExchgInvalids OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         which were sent and were flagged by the peer to
+         contain references to unrecognized security
+         parameters. This value is accumulated across all
+         currently and previously active IPsec ISAKMP SAs."
+    ::= { pikeGlobalStats 16 }
+
+pikeGlobalOutP2ExchgRejects OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         which were sent, validated by the peer but were
+         rejected by the peer's policy. This value is
+         accumulated across all currently and previously
+         active IPsec ISAKMP SAs."
+    ::= { pikeGlobalStats 17 }
+
+pikeGlobalOutP2SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 SA
+         delete requests sent by all currently and
+         previously active IPsec Phase-1 IKE Tunnels."
+    ::= { pikeGlobalStats 18 }
+
+pikeGlobalInitTunnels OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-1 IKE
+         Tunnels which were locally initiated."
+    ::= { pikeGlobalStats 19 }
+
+pikeGlobalInitTunnelFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-1 IKE Tunnels
+         which were locally initiated and failed to activate."
+    ::= { pikeGlobalStats 20 }
+
+pikeGlobalRespTunnelFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-1 IKE Tunnels
+         which were remotely initiated and failed to activate."
+    ::= { pikeGlobalStats 21 }
+
+pikeGlobalAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of authentications which ended
+         in failure by all current and previous IPsec Phase-1
+         IKE Tunnels."
+    ::= { pikeGlobalStats 23 }
+
+pikeGlobalDecryptFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of decryptions which ended
+         in failure by all current and previous IPsec Phase-1
+         IKE Tunnels."
+    ::= { pikeGlobalStats 24 }
+
+pikeGlobalHashValidFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of hash validations which ended
+         in failure by all current and previous IPsec Phase-1
+         IKE Tunnels."
+    ::= { pikeGlobalStats 25 }
+
+pikeGlobalRespTunnels OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-1 IKE
+         Tunnels which were remotely initiated."
+    ::= { pikeGlobalStats 27 }
+
+pikeGlobalInP1SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of ISAKMP security association
+         delete requests received by all currently and
+         previously active and ISAKMP security associations."
+    ::= { pikeGlobalStats 30 }
+
+pikeGlobalOutP1SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of ISAKMP security association
+         delete requests sent by all currently and
+         previously active and ISAKMP security associations."
+    ::= { pikeGlobalStats 31 }
+
+--
+-- The IPsec Phase-1 Internet Key Exchange Peer Table
+--
+pikePeerTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PikePeerEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IPsec Phase-1 Internet Key Exchange Peer Table.
+         There is one entry in this table for each IPsec
+         Phase-1 IKE peer association which is currently
+         associated with an active IPsec Phase-1 Tunnel.
+         A peer has an entry in this stable, if and only if
+         thjere is at least one Phase-1 or Phase-2 tunnel
+         terminating on the managed entity from the peer.
+         When all Phase-1 and Phase-2 tunnels to a peer have
+         expired, the entry for the peer is deleted off this
+         table."
+    ::= { pipSecPhaseOne 2 }
+
+pikePeerEntry OBJECT-TYPE
+    SYNTAX      PikePeerEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "Each entry contains the attributes associated
+         with an IPsec Phase-1 IKE peer association."
+    INDEX       { pikePeerLocalType, pikePeerLocalValue, 
+                  pikePeerRemoteType, pikePeerRemoteValue, 
+                  pikePeerIntIndex }
+    ::= { pikePeerTable 1 }
+
+PikePeerEntry ::= SEQUENCE {
+    pikePeerLocalType           IkePeerType,
+    pikePeerLocalValue          DisplayString,
+    pikePeerRemoteType          IkePeerType,
+    pikePeerRemoteValue         DisplayString,
+    pikePeerIntIndex            INTEGER,
+    pikePeerLocalAddr           IPSIpAddress,
+    pikePeerRemoteAddr          IPSIpAddress,
+    pikePeerActiveTime          TimeInterval,
+    pikePeerActiveTunnelIndex   INTEGER
+}
+
+pikePeerLocalType OBJECT-TYPE
+    SYNTAX      IkePeerType
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of local peer identity.  The local peer
+         may be identified by:
+         1. an IP address, or
+         2. or a fully qualified domain name.
+         3. or a distinguished name."
+    ::= { pikePeerEntry 1 }
+
+pikePeerLocalValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of the local peer identity.
+         If the local peer type is an IP Address, then this
+         is the IP Address used to identify the local peer.
+         If the local peer type is a id_fqdn, then this is
+         the FQDN of the local peer.
+         If the local peer type is id_dn, then this is
+         the DN string of the local peer."
+    ::= { pikePeerEntry 2 }
+
+pikePeerRemoteType OBJECT-TYPE
+    SYNTAX      IkePeerType
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of remote peer identity.  The remote peer
+         may be identified by:
+         1. an IP address, or
+         2. or a fully qualified domain name.
+         3. or a distinguished name."
+    ::= { pikePeerEntry 3 }
+
+pikePeerRemoteValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of the remote peer identity.
+         If the remote peer type is an IP Address, then this
+         is the IP Address used to identify the remote peer.
+         If the remote peer type is id_fqdn, then this is
+         the FQDN of the remote peer.
+         If the remote peer type is a id_dn, then this is
+         the DN string of the remote peer."
+    ::= { pikePeerEntry 4 }
+
+pikePeerIntIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The internal index of the local-remote
+         peer association.  This internal index is used
+         to uniquely identify multiple associations between
+         the local and remote peer."
+    ::= { pikePeerEntry 5 }
+
+pikePeerLocalAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the local peer."
+    ::= { pikePeerEntry 6 }
+
+pikePeerRemoteAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the remote peer."
+    ::= { pikePeerEntry 7 }
+
+pikePeerActiveTime OBJECT-TYPE
+    SYNTAX      TimeInterval
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The length of time that the peer association has
+         existed in hundredths of a second."
+    ::= { pikePeerEntry 8 }
+
+pikePeerActiveTunnelIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the active IPsec Phase-1 IKE Tunnel
+         (pikeTunIndex in the pikeTunnelTable) for this peer
+         association.  If an IPsec Phase-1 IKE Tunnel is
+         not currently active, then the value of this
+         object will be zero."
+    ::= { pikePeerEntry 9 }
+
+--
+-- The IPsec Phase-1 Internet Key Exchange Tunnel Table
+--
+pikeTunnelTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PikeTunnelEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IPsec Phase-1 Internet Key Exchange Tunnel Table.
+         There is one entry in this table for each active IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pipSecPhaseOne 3 }
+
+pikeTunnelEntry OBJECT-TYPE
+    SYNTAX      PikeTunnelEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "Each entry contains the attributes associated with
+         an active IPsec Phase-1 IKE Tunnel."
+    INDEX       { pikeTunIndex }
+    ::= { pikeTunnelTable 1 }
+
+PikeTunnelEntry ::= SEQUENCE {
+    pikeTunIndex                    INTEGER,
+    pikeTunLocalType                IkePeerType,
+    pikeTunLocalValue               DisplayString,
+    pikeTunLocalAddr                IPSIpAddress,
+    pikeTunRemoteType               IkePeerType,
+    pikeTunRemoteValue              DisplayString,
+    pikeTunRemoteAddr               IPSIpAddress,
+    pikeTunNegoMode                 IkeNegoMode,
+    pikeTunDiffHellmanGrp           DiffHellmanGrp,
+    pikeTunEncryptAlgo              EncryptAlgo,
+    pikeTunHashAlgo                 IkeHashAlgo,
+    pikeTunAuthMethod               IkeAuthMethod,
+    pikeTunLifeTime                 INTEGER,
+    pikeTunActiveTime               TimeInterval,
+    pikeTunSaRefreshThreshold       INTEGER,
+    pikeTunInNotifys                Counter,
+    pikeTunInP2Exchgs               Counter,
+    pikeTunInP2ExchgInvalids        Counter,
+    pikeTunInP2ExchgRejects         Counter,
+    pikeTunInP2SaDelRequests        Counter,
+    pikeTunOutNotifys               Counter,
+    pikeTunOutP2Exchgs              Counter,
+    pikeTunOutP2ExchgInvalids       Counter,
+    pikeTunOutP2ExchgRejects        Counter,
+    pikeTunOutP2SaDelRequests       Counter,
+    pikeTunStatus                   TunnelStatus
+}
+
+pikeTunIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the IPsec Phase-1 IKE Tunnel Table.
+         The value of the index is a number which begins
+         at one and is incremented with each tunnel that
+         is created. The value of this object will
+         wrap at 2,147,483,647."
+    ::= { pikeTunnelEntry 1 }
+
+pikeTunLocalType OBJECT-TYPE
+    SYNTAX      IkePeerType
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of local peer identity.  The local
+         peer may be identified by:
+          1. an IP address, or
+          2. or a fully qualified domain name string.
+          3. or a distinguished name string."
+    ::= { pikeTunnelEntry 2 }
+
+pikeTunLocalValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of the local peer identity.
+         If the local peer type is an IP Address, then this
+         is the IP Address used to identify the local peer.
+         If the local peer type is id_fqdn, then this is
+         the FQDN of the remote peer.
+         If the local peer type is a id_dn, then this is
+         the distinguished name string of the local peer."
+    ::= { pikeTunnelEntry 3 }
+
+pikeTunLocalAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the local endpoint for the IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 4 }
+
+pikeTunRemoteType OBJECT-TYPE
+    SYNTAX      IkePeerType
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of remote peer identity.
+         The remote peer may be identified by:
+          1. an IP address, or
+          2. or a fully qualified domain name string.
+          3. or a distinguished name string."
+    ::= { pikeTunnelEntry 6 }
+
+pikeTunRemoteValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of the remote peer identity.
+         If the remote peer type is an IP Address, then this
+         is the IP Address used to identify the remote peer.
+         If the remote peer type is id_fqdn, then this is
+         the FQDN of the remote peer.
+         If the remote peer type is a id_dn, then this is
+         the distinguished named string of the remote peer."
+    ::= { pikeTunnelEntry 7 }
+
+pikeTunRemoteAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the remote endpoint for the IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 8 }
+
+pikeTunNegoMode OBJECT-TYPE
+    SYNTAX      IkeNegoMode
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiation mode of the IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 10 }
+
+pikeTunDiffHellmanGrp OBJECT-TYPE
+    SYNTAX      DiffHellmanGrp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Diffie Hellman Group used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelEntry 11 }
+
+pikeTunEncryptAlgo OBJECT-TYPE
+    SYNTAX      EncryptAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encryption algorithm used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelEntry 12 }
+
+pikeTunHashAlgo OBJECT-TYPE
+    SYNTAX      IkeHashAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The hash algorithm used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelEntry 13 }
+
+pikeTunAuthMethod OBJECT-TYPE
+    SYNTAX      IkeAuthMethod
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication method used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelEntry 14 }
+
+pikeTunLifeTime OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiated LifeTime of the IPsec Phase-1 IKE Tunnel
+         in seconds."
+    ::= { pikeTunnelEntry 15 }
+
+pikeTunActiveTime OBJECT-TYPE
+    SYNTAX      TimeInterval
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The length of time the IPsec Phase-1 IKE tunnel has been
+         active in hundredths of seconds."
+    ::= { pikeTunnelEntry 16 }
+
+pikeTunSaRefreshThreshold OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The security assoication refresh threshold in seconds."
+    ::= { pikeTunnelEntry 17 }
+
+pikeTunInNotifys OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of notifys received by
+         this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 22 }
+
+pikeTunInP2Exchgs OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2
+         exchanges received by
+          this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 23 }
+
+pikeTunInP2ExchgInvalids OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         received on this tunnel that were found to
+         contain references to unrecognized security
+         parameters."
+    ::= { pikeTunnelEntry 24 }
+
+pikeTunInP2ExchgRejects OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         received on this tunnel that were validated but were
+         rejected by the local policy."
+    ::= { pikeTunnelEntry 25 }
+
+pikeTunInP2SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2
+         security association delete requests received
+         by this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 26 }
+
+pikeTunOutNotifys OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of notifys sent by this
+         IPsec Phase-1 Tunnel."
+    ::= { pikeTunnelEntry 30 }
+
+pikeTunOutP2Exchgs OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges sent by
+         this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 31 }
+
+pikeTunOutP2ExchgInvalids OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         sent on this tunnel that were found by the peer
+         to contain references to security parameters
+         not recognized by the peer."
+    ::= { pikeTunnelEntry 32 }
+
+pikeTunOutP2ExchgRejects OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         sent on this tunnel that were validated by the peer
+         but were rejected by the peer's policy."
+    ::= { pikeTunnelEntry 33 }
+
+pikeTunOutP2SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 security association
+         delete requests sent by this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelEntry 34 }
+
+pikeTunStatus OBJECT-TYPE
+    SYNTAX      TunnelStatus
+--    ACCESS      read-write
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The status of the MIB table row.
+         This object can be used to bring the tunnel down
+         by setting value of this object to destroy(2).
+         This object cannot be used to create
+         a MIB table row."
+    ::= { pikeTunnelEntry 35 }
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- IPsec Phase-2 Group
+--
+-- This group consists of:
+-- 1) IPsec Phase-2 Global Statistics
+-- 2) IPsec Phase-2 Tunnel Table
+-- 4) IPsec Phase-2 Security Protection Index Table
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+pipSecPhaseTwo OBJECT IDENTIFIER ::= { pipSecMIBObjects 3 }
+
+-- The IPsec Phase-2 Global Tunnel Statistics
+pipSecGlobalStats OBJECT IDENTIFIER ::= { pipSecPhaseTwo 1 }
+
+pipSecGlobalActiveTunnels OBJECT-TYPE
+    SYNTAX      Gauge
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of currently active
+         IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 1 }
+
+pipSecGlobalInOctets OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of octets received by all
+         current and previous IPsec Phase-2 Tunnels.
+         This value is
+         accumulated BEFORE determining whether or not
+         the packet should be decompressed. See also
+         pipSecGlobalInOctWraps for the number of times
+         this counter has wrapped."
+    ::= { pipSecGlobalStats 3 }
+
+pipSecGlobalInPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets received
+         by all current and previous
+          IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 9 }
+
+pipSecGlobalInDrops OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped
+         during receive processing by all current and previous
+         IPsec Phase-2 Tunnels. This count does
+         NOT include packets dropped due to
+         Anti-Replay processing."
+    ::= { pipSecGlobalStats 10 }
+
+pipSecGlobalInReplayDrops OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped during
+         receive processing due to Anti-Replay
+         processing by all current and previous IPsec
+          Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 11 }
+
+pipSecGlobalInAuths OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound authentication's
+         performed by all current and previous IPsec
+         Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 12 }
+
+pipSecGlobalInAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound authentication's
+         which ended in failure by all current and previous
+         IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 13 }
+
+pipSecGlobalInDecrypts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound decryption's
+         performed by all current and previous IPsec
+         Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 14 }
+
+pipSecGlobalInDecryptFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound decryption's
+         which ended in failure by all current and
+         previous IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 15 }
+
+pipSecGlobalOutOctets OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of octets sent by all
+         current and previous IPsec Phase-2 Tunnels.
+         This value is accumulated AFTER determining
+         whether or not the packet should be compressed.
+         See also pipSecGlobalOutOctWraps for the
+          number of times this counter has wrapped."
+    ::= { pipSecGlobalStats 16 }
+
+pipSecGlobalOutPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets sent by all
+         current and previous
+          IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 22 }
+
+pipSecGlobalOutDrops OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped during send
+         processing by all current and previous IPsec
+         Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 23 }
+
+pipSecGlobalOutAuths OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound authentication's
+         performed by all current and previous IPsec
+         Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 24 }
+
+pipSecGlobalOutAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound authentication's
+         which ended in failure
+          by all current and previous IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 25 }
+
+pipSecGlobalOutEncrypts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound encryption's performed
+         by all current and previous IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 26 }
+
+pipSecGlobalOutEncryptFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound encryption's
+         which ended in failure by all current and
+         previous IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 27 }
+
+pipSecGlobalNoSaFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of non-existent Security Assocication
+         in failures which occurred during processing of all
+         current and previous IPsec Phase-2 Tunnels."
+    ::= { pipSecGlobalStats 33 }
+
+--
+-- The IPsec Phase-2 Tunnel Table
+--
+pipSecTunnelTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PipSecTunnelEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IPsec Phase-2 Tunnel Table.
+         There is one entry in this table for
+         each active IPsec Phase-2 Tunnel."
+    ::= { pipSecPhaseTwo 2 }
+
+pipSecTunnelEntry OBJECT-TYPE
+    SYNTAX      PipSecTunnelEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "Each entry contains the attributes
+         associated with an active IPsec Phase-2 Tunnel."
+    INDEX       { pipSecTunIndex }
+    ::= { pipSecTunnelTable 1 }
+
+PipSecTunnelEntry ::= SEQUENCE {
+    pipSecTunIndex                  INTEGER,
+    pipSecTunIkeTunnelIndex         INTEGER,
+    pipSecTunIkeTunnelAlive         TruthValue,
+    pipSecTunLocalAddr              IPSIpAddress,
+    pipSecTunRemoteAddr             IPSIpAddress,
+    pipSecTunKeyType                KeyType,
+    pipSecTunEncapMode              EncapMode,
+    pipSecTunLifeSize               INTEGER,
+    pipSecTunLifeTime               INTEGER,
+    pipSecTunActiveTime             TimeInterval,
+    pipSecTunSaLifeSizeThreshold    INTEGER,
+    pipSecTunSaLifeTimeThreshold    INTEGER,
+    pipSecTunTotalRefreshes         Counter,
+    pipSecTunExpiredSaInstances     Counter,
+    pipSecTunCurrentSaInstances     Gauge,
+    pipSecTunInSaDiffHellmanGrp     DiffHellmanGrp,
+    pipSecTunInSaEncryptAlgo        EncryptAlgo,
+    pipSecTunInSaAhAuthAlgo         AuthAlgo,
+    pipSecTunInSaEspAuthAlgo        AuthAlgo,
+    pipSecTunOutSaDiffHellmanGrp    DiffHellmanGrp,
+    pipSecTunOutSaEncryptAlgo       EncryptAlgo,
+    pipSecTunOutSaAhAuthAlgo        AuthAlgo,
+    pipSecTunOutSaEspAuthAlgo       AuthAlgo,
+    pipSecTunPmtu                   INTEGER,
+    pipSecTunInOctets               Counter,
+    pipSecTunInPkts                 Counter,
+    pipSecTunInDropPkts             Counter,
+    pipSecTunInReplayDropPkts       Counter,
+    pipSecTunInAuths                Counter,
+    pipSecTunInAuthFails            Counter,
+    pipSecTunInDecrypts             Counter,
+    pipSecTunInDecryptFails         Counter,
+    pipSecTunOutOctets              Counter,
+    pipSecTunOutPkts                Counter,
+    pipSecTunOutDropPkts            Counter,
+    pipSecTunOutAuths               Counter,
+    pipSecTunOutAuthFails           Counter,
+    pipSecTunOutEncrypts            Counter,
+    pipSecTunOutEncryptFails        Counter,
+    pipSecTunStatus                 TunnelStatus
+}
+
+pipSecTunIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the IPsec Phase-2 Tunnel Table.
+         The value of the index is a number which begins
+         at one and is incremented with each tunnel that
+         is created. The value of this object will wrap
+         at 2,147,483,647."
+    ::= { pipSecTunnelEntry 1 }
+
+pipSecTunIkeTunnelIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the associated IPsec Phase-1
+         IKE Tunnel.
+          (pikeTunIndex in the pikeTunnelTable)"
+    ::= { pipSecTunnelEntry 2 }
+
+pipSecTunIkeTunnelAlive OBJECT-TYPE
+    SYNTAX      TruthValue
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "An indicator which specifies whether or not the
+         IPsec Phase-1 IKE Tunnel currently exists."
+    ::= { pipSecTunnelEntry 3 }
+
+pipSecTunLocalAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the local endpoint for the IPsec
+         Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 4 }
+
+pipSecTunRemoteAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the remote endpoint for the IPsec
+         Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 5 }
+
+pipSecTunKeyType OBJECT-TYPE
+    SYNTAX      KeyType
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of key used by the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 6 }
+
+pipSecTunEncapMode OBJECT-TYPE
+    SYNTAX      EncapMode
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encapsulation mode used by the
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 7 }
+
+pipSecTunLifeSize OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+--     UNITS       "KBytes"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiated LifeSize of the
+         IPsec Phase-2 Tunnel in kilobytes."
+    ::= { pipSecTunnelEntry 8 }
+
+pipSecTunLifeTime OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+--     UNITS       "Seconds"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiated LifeTime of the
+         IPsec Phase-2 Tunnel in seconds."
+    ::= { pipSecTunnelEntry 9 }
+
+pipSecTunActiveTime OBJECT-TYPE
+    SYNTAX      TimeInterval
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The length of time the IPsec Phase-2
+         Tunnel has been
+          active in hundredths of seconds."
+    ::= { pipSecTunnelEntry 10 }
+
+pipSecTunSaLifeSizeThreshold OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+--     UNITS       "KBytes"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The security association LifeSize refresh
+         threshold in kilobytes."
+    ::= { pipSecTunnelEntry 11 }
+
+pipSecTunSaLifeTimeThreshold OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+--     UNITS       "Seconds"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The security association LifeTime refresh
+         threshold in seconds."
+    ::= { pipSecTunnelEntry 12 }
+
+pipSecTunTotalRefreshes OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "QM Exchanges"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of security
+         association refreshes performed."
+    ::= { pipSecTunnelEntry 13 }
+
+pipSecTunExpiredSaInstances OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SAs"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of security associations
+         which have expired."
+    ::= { pipSecTunnelEntry 14 }
+
+pipSecTunCurrentSaInstances OBJECT-TYPE
+    SYNTAX      Gauge
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The number of security associations
+         which are currently active or expiring."
+    ::= { pipSecTunnelEntry 15 }
+
+pipSecTunInSaDiffHellmanGrp OBJECT-TYPE
+    SYNTAX      DiffHellmanGrp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Diffie Hellman Group used
+         by the inbound security association of the
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 16 }
+
+pipSecTunInSaEncryptAlgo OBJECT-TYPE
+    SYNTAX      EncryptAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encryption algorithm used by the inbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 17 }
+
+pipSecTunInSaAhAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the inbound
+         authentication header (AH) security association of
+         the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 18 }
+
+pipSecTunInSaEspAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the inbound
+         ecapsulation security protocol (ESP) security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 19 }
+
+pipSecTunOutSaDiffHellmanGrp OBJECT-TYPE
+    SYNTAX      DiffHellmanGrp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Diffie Hellman Group used by the outbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 21 }
+
+pipSecTunOutSaEncryptAlgo OBJECT-TYPE
+    SYNTAX      EncryptAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encryption algorithm used by the outbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 22 }
+
+pipSecTunOutSaAhAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the outbound
+         authentication header (AH) security association of
+         the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 23 }
+
+pipSecTunOutSaEspAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the inbound
+         encapsulation security protocol (ESP)
+         security association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 24 }
+
+pipSecTunPmtu OBJECT-TYPE
+    SYNTAX      INTEGER (68..1500)
+--     UNITS       "Octets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Path MTU that has been determined for this
+         IPsec Phase-2 tunnel. The lower end of the range
+         is 68 which is the minimum MTU for IPv4."
+    ::= { pipSecTunnelEntry 26 }
+
+pipSecTunInOctets OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of octets received by this IPsec
+         Phase-2 Tunnel.  This value is accumulated
+         BEFORE determining whether or not the packet should be
+         decompressed.  See also pipSecTunInOctWraps for the
+         number of times this counter has wrapped."
+    ::= { pipSecTunnelEntry 27 }
+
+pipSecTunInPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets received
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 33 }
+
+pipSecTunInDropPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped
+         during receive processing by this IPsec Phase-2
+         Tunnel. This count does NOT include
+          packets dropped due to Anti-Replay processing."
+    ::= { pipSecTunnelEntry 34 }
+
+pipSecTunInReplayDropPkts OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Packets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped during
+         receive processing due to Anti-Replay processing
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 35 }
+
+pipSecTunInAuths OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Events"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound
+         authentication's performed by this
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 36 }
+
+pipSecTunInAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Failures"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound authentication's
+         which ended in
+          failure by this IPsec Phase-2 Tunnel ."
+    ::= { pipSecTunnelEntry 37 }
+
+pipSecTunInDecrypts OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Packets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound decryption's performed
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 38 }
+
+pipSecTunInDecryptFails OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Failures"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound decryption's
+         which ended in failure
+          by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 39 }
+
+pipSecTunOutOctets OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Octets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of octets sent by this IPsec
+         Phase-2 Tunnel.  This value is accumulated
+         AFTER determining whether or not the packet should
+         be compressed.  See also pipSecTunOutOctWraps for
+         the number of times this counter has wrapped."
+    ::= { pipSecTunnelEntry 40 }
+
+pipSecTunOutPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets sent by this
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 46 }
+
+pipSecTunOutDropPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped during
+         send processing by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 47 }
+
+pipSecTunOutAuths OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound authentication's performed
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 48 }
+
+pipSecTunOutAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound
+         authentication's which ended in failure
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 49 }
+
+pipSecTunOutEncrypts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound encryption's performed
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 50 }
+
+pipSecTunOutEncryptFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound encryption's
+         which ended in failure by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelEntry 51 }
+
+pipSecTunStatus OBJECT-TYPE
+    SYNTAX      TunnelStatus
+--    ACCESS      read-write
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The status of the MIB table row.
+         
+         This object can be used to bring the tunnel down
+         by setting value of this object to destroy(2).
+         When the value is set to destroy(2), the SA
+         bundle is destroyed and this row is deleted
+         from this table.
+         When this MIB value is queried, the value of
+         active(1) is always returned, if the instance
+         exists.
+         This object cannot be used to create a MIB
+         table row."
+    ::= { pipSecTunnelEntry 56 }
+
+--
+-- The IPsec Phase-2 Security Protection Index Table (deprecated)
+--
+pipSecSpiTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PipSecSpiEntry
+    ACCESS      not-accessible
+    STATUS      deprecated
+    DESCRIPTION 
+        "The IPsec Phase-2 Security Protection Index Table.
+         This table contains an entry for each active
+         and expiring security
+          association."
+    ::= { pipSecPhaseTwo 4 }
+
+pipSecSpiEntry OBJECT-TYPE
+    SYNTAX      PipSecSpiEntry
+    ACCESS      not-accessible
+    STATUS      deprecated
+    DESCRIPTION 
+        "Each entry contains the attributes associated with
+         active and expiring IPsec Phase-2
+         security associations."
+    INDEX       { pipSecTunIndex, pipSecSpiIndex }
+    ::= { pipSecSpiTable 1 }
+
+PipSecSpiEntry ::= SEQUENCE {
+    pipSecSpiIndex      INTEGER,
+    pipSecSpiDirection  INTEGER,
+    pipSecSpiValue      Gauge,
+    pipSecSpiProtocol   INTEGER,
+    pipSecSpiStatus     INTEGER
+}
+
+pipSecSpiIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      not-accessible
+    STATUS      deprecated
+    DESCRIPTION 
+        "The number of the SPI associated with the
+         Phase-2 Tunnel Table.  The value of this
+         index is a number which begins at one and is
+         incremented with each SPI associated with an
+         IPsec Phase-2 Tunnel.  The value of this
+         object will wrap at 2,147,483,647."
+    ::= { pipSecSpiEntry 1 }
+
+pipSecSpiDirection OBJECT-TYPE
+    SYNTAX      INTEGER { in(1), out(2) }
+    ACCESS      read-only
+    STATUS      deprecated
+    DESCRIPTION 
+        "The direction of the SPI."
+    ::= { pipSecSpiEntry 2 }
+
+pipSecSpiValue OBJECT-TYPE
+    SYNTAX      Gauge
+    ACCESS      read-only
+    STATUS      deprecated
+    DESCRIPTION 
+        "The value of the SPI."
+    ::= { pipSecSpiEntry 3 }
+
+pipSecSpiProtocol OBJECT-TYPE
+    SYNTAX      INTEGER { ah(1), esp(2), ipcomp(3) }
+    ACCESS      read-only
+    STATUS      deprecated
+    DESCRIPTION 
+        "The protocol of the SPI."
+    ::= { pipSecSpiEntry 4 }
+
+pipSecSpiStatus OBJECT-TYPE
+    SYNTAX      INTEGER { active(1), expiring(2) }
+    ACCESS      read-only
+    STATUS      deprecated
+    DESCRIPTION 
+        "The status of the SPI."
+    ::= { pipSecSpiEntry 5 }
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- The IPsec History Group
+--
+-- This group consists of a:
+-- 1) IPsec History Global Objects
+-- 2) IPsec Phase-1 History Objects
+-- 3) IPsec Phase-2 History Objects
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+pipSecHistory OBJECT IDENTIFIER ::= { pipSecMIBObjects 4 }
+
+--
+-- The IPsec Phase-1 Tunnel History Table
+--
+pipSecHistPhaseOne OBJECT IDENTIFIER ::= { pipSecHistory 2 }
+
+pikeTunnelHistTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PikeTunnelHistEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IPsec Phase-1 Internet Key Exchange Tunnel
+         History Table.  This table is implemented as a
+         sliding window in which only the last n entries
+         are maintained.  The maximum number of entries
+          is specified by the pipSecHistTableSize object."
+    ::= { pipSecHistPhaseOne 1 }
+
+pikeTunnelHistEntry OBJECT-TYPE
+    SYNTAX      PikeTunnelHistEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "Each entry contains the attributes
+         associated with a previously active IPsec
+         Phase-1 IKE Tunnel."
+    INDEX       { pikeTunHistIndex }
+    ::= { pikeTunnelHistTable 1 }
+
+PikeTunnelHistEntry ::= SEQUENCE {
+    pikeTunHistIndex                    INTEGER,
+    pikeTunHistTermReason               INTEGER,
+    pikeTunHistActiveIndex              INTEGER,
+    pikeTunHistPeerLocalType            IkePeerType,
+    pikeTunHistPeerLocalValue           DisplayString,
+    pikeTunHistPeerIntIndex             INTEGER,
+    pikeTunHistPeerRemoteType           IkePeerType,
+    pikeTunHistPeerRemoteValue          DisplayString,
+    pikeTunHistLocalAddr                IPSIpAddress,
+    pikeTunHistRemoteAddr               IPSIpAddress,
+    pikeTunHistNegoMode                 IkeNegoMode,
+    pikeTunHistDiffHellmanGrp           DiffHellmanGrp,
+    pikeTunHistEncryptAlgo              EncryptAlgo,
+    pikeTunHistHashAlgo                 IkeHashAlgo,
+    pikeTunHistAuthMethod               IkeAuthMethod,
+    pikeTunHistLifeTime                 INTEGER,
+    pikeTunHistStartTime                TimeStamp,
+    pikeTunHistActiveTime               TimeInterval,
+    pikeTunHistInNotifys                Counter,
+    pikeTunHistInP2Exchgs               Counter,
+    pikeTunHistInP2ExchgInvalids        Counter,
+    pikeTunHistInP2ExchgRejects         Counter,
+    pikeTunHistInP2SaDelRequests        Counter,
+    pikeTunHistOutNotifys               Counter,
+    pikeTunHistOutP2Exchgs              Counter,
+    pikeTunHistOutP2ExchgInvalids       Counter,
+    pikeTunHistOutP2ExchgRejects        Counter,
+    pikeTunHistOutP2SaDelRequests       Counter
+}
+
+pikeTunHistIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the IPsec Phase-1 IKE Tunnel History
+         Table.  The value of the index is a number which
+         begins at one and is incremented with each
+         tunnel that ends. The value of this object
+         will wrap at 2,147,483,647."
+    ::= { pikeTunnelHistEntry 1 }
+
+pikeTunHistTermReason OBJECT-TYPE
+    SYNTAX      INTEGER { other(1), normal(2), operRequest(3), 
+                    peerDelRequest(4), peerLost(5), 
+                    applicationInitiated(6), xauthFailure(7), 
+                    localFailure(8), checkPointReg(9) }
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The reason the IPsec Phase-1 IKE Tunnel was terminated.
+         Possible reasons include:
+         1 = other
+         2 = normal termination
+         3 = operator request
+         4 = peer delete request was received
+         5 = contact with peer was lost
+         6 = applicationInitiated (eg: L2TP requesting the termination)
+         7 = failure of extended authentication
+         8 = local failure occurred.
+         9 = operator initiated check point request"
+    ::= { pikeTunnelHistEntry 2 }
+
+pikeTunHistActiveIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the previously active IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 3 }
+
+pikeTunHistPeerLocalType OBJECT-TYPE
+    SYNTAX      IkePeerType
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of local peer identity.  The local peer
+         may be indentified by:
+          1. an IP address, or
+          2. or a fully qualified domain name.
+          3. or a distinguished name."
+    ::= { pikeTunnelHistEntry 4 }
+
+pikeTunHistPeerLocalValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of the local peer identity.
+         
+         If the local peer type is an IP Address, then this
+         is the IP Address used to identify the local peer.
+         
+         If the local peer type is id_fqdn, then this is
+         the FQDN of the local entity.
+         
+         If the local peer type is a id_dn, then this is
+         the distinguished named string of the local entity."
+    ::= { pikeTunnelHistEntry 5 }
+
+pikeTunHistPeerIntIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The internal index of the local-remote peer
+         association.  This internal index is used to
+         uniquely identify multiple associations between
+         the local and remote peer."
+    ::= { pikeTunnelHistEntry 6 }
+
+pikeTunHistPeerRemoteType OBJECT-TYPE
+    SYNTAX      IkePeerType
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of remote peer identity.  The remote
+         peer may be indentified by:
+          1. an IP address, or
+          2. or a fully qualified domain name.
+          3. or a distinguished name."
+    ::= { pikeTunnelHistEntry 7 }
+
+pikeTunHistPeerRemoteValue OBJECT-TYPE
+    SYNTAX      DisplayString
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of the remote peer identity.
+         
+         If the remote peer type is an IP Address, then this
+         is the IP Address used to identify the remote peer.
+         
+         If the remote peer type is id_fqdn, then this is
+         the FQDN of the remote peer.
+         
+         If the remote peer type is a id_dn, then this is
+         the distinguished named string of the remote peer."
+    ::= { pikeTunnelHistEntry 8 }
+
+pikeTunHistLocalAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the local endpoint for the IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 9 }
+
+pikeTunHistRemoteAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the remote endpoint for the IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 11 }
+
+pikeTunHistNegoMode OBJECT-TYPE
+    SYNTAX      IkeNegoMode
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiation mode of the IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 13 }
+
+pikeTunHistDiffHellmanGrp OBJECT-TYPE
+    SYNTAX      DiffHellmanGrp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Diffie Hellman Group used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelHistEntry 14 }
+
+pikeTunHistEncryptAlgo OBJECT-TYPE
+    SYNTAX      EncryptAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encryption algorithm used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelHistEntry 15 }
+
+pikeTunHistHashAlgo OBJECT-TYPE
+    SYNTAX      IkeHashAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The hash algorithm used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelHistEntry 16 }
+
+pikeTunHistAuthMethod OBJECT-TYPE
+    SYNTAX      IkeAuthMethod
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication method used in IPsec Phase-1 IKE
+         negotiations."
+    ::= { pikeTunnelHistEntry 17 }
+
+pikeTunHistLifeTime OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiated LifeTime of the IPsec Phase-1 IKE Tunnel
+         in seconds."
+    ::= { pikeTunnelHistEntry 18 }
+
+pikeTunHistStartTime OBJECT-TYPE
+    SYNTAX      TimeStamp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of sysUpTime in hundredths of seconds
+         when the IPsec Phase-1 IKE tunnel was started."
+    ::= { pikeTunnelHistEntry 19 }
+
+pikeTunHistActiveTime OBJECT-TYPE
+    SYNTAX      TimeInterval
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The length of time the IPsec Phase-1 IKE tunnel was been
+         active in hundredths of seconds."
+    ::= { pikeTunnelHistEntry 20 }
+
+pikeTunHistInNotifys OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Notification Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of notifys received
+         by this IPsec Phase-1
+          IKE Tunnel."
+    ::= { pikeTunnelHistEntry 26 }
+
+pikeTunHistInP2Exchgs OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SA Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2
+         exchanges received by
+          this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 27 }
+
+pikeTunHistInP2ExchgInvalids OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SA Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         received on this tunnel that were found to
+         contain references to unrecognized security
+         parameters."
+    ::= { pikeTunnelHistEntry 28 }
+
+pikeTunHistInP2ExchgRejects OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SA Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         received on this tunnel that were validated but were
+         rejected by the local policy."
+    ::= { pikeTunnelHistEntry 29 }
+
+pikeTunHistInP2SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Notification Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 security association
+         delete requests received by this IPsec
+         Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 30 }
+
+pikeTunHistOutNotifys OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Notification Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of notifys sent by this IPsec Phase-1
+         IKE Tunnel."
+    ::= { pikeTunnelHistEntry 34 }
+
+pikeTunHistOutP2Exchgs OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SA Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges sent by
+         this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 35 }
+
+pikeTunHistOutP2ExchgInvalids OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SA Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         sent on this tunnel that were found by the peer
+         to contain references to security parameters
+         not recognized by the peer."
+    ::= { pikeTunnelHistEntry 36 }
+
+pikeTunHistOutP2ExchgRejects OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "SA Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 exchanges
+         sent on this tunnel that were validated by the peer
+         but were rejected by the peer's policy."
+    ::= { pikeTunnelHistEntry 37 }
+
+pikeTunHistOutP2SaDelRequests OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Notification Payloads"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of IPsec Phase-2 security association
+         delete requests sent by this IPsec Phase-1 IKE Tunnel."
+    ::= { pikeTunnelHistEntry 38 }
+
+--
+-- The IPsec Phase-2 Tunnel History Table
+--
+pipSecHistPhaseTwo OBJECT IDENTIFIER ::= { pipSecHistory 3 }
+
+pipSecTunnelHistTable OBJECT-TYPE
+    SYNTAX      SEQUENCE OF PipSecTunnelHistEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IPsec Phase-2 Tunnel History Table.
+         This table is implemented as a sliding
+         window in which only the
+         last n entries are maintained.  The maximum number
+         of entries
+         is specified by the pipSecHistTableSize object."
+    ::= { pipSecHistPhaseTwo 1 }
+
+pipSecTunnelHistEntry OBJECT-TYPE
+    SYNTAX      PipSecTunnelHistEntry
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "Each entry contains the attributes associated with
+         a previously active IPsec Phase-2 Tunnel."
+    INDEX       { pipSecTunHistIndex }
+    ::= { pipSecTunnelHistTable 1 }
+
+PipSecTunnelHistEntry ::= SEQUENCE {
+    pipSecTunHistIndex                  INTEGER,
+    pipSecTunHistTermReason             INTEGER,
+    pipSecTunHistActiveIndex            INTEGER,
+    pipSecTunHistIkeTunnelIndex         INTEGER,
+    pipSecTunHistLocalAddr              IPSIpAddress,
+    pipSecTunHistRemoteAddr             IPSIpAddress,
+    pipSecTunHistKeyType                KeyType,
+    pipSecTunHistEncapMode              EncapMode,
+    pipSecTunHistLifeSize               INTEGER,
+    pipSecTunHistLifeTime               INTEGER,
+    pipSecTunHistStartTime              TimeStamp,
+    pipSecTunHistActiveTime             TimeInterval,
+    pipSecTunHistTotalRefreshes         Counter,
+    pipSecTunHistInSaDiffHellmanGrp     DiffHellmanGrp,
+    pipSecTunHistInSaEncryptAlgo        EncryptAlgo,
+    pipSecTunHistInSaAhAuthAlgo         AuthAlgo,
+    pipSecTunHistInSaEspAuthAlgo        AuthAlgo,
+    pipSecTunHistOutSaDiffHellmanGrp    DiffHellmanGrp,
+    pipSecTunHistOutSaEncryptAlgo       EncryptAlgo,
+    pipSecTunHistOutSaAhAuthAlgo        AuthAlgo,
+    pipSecTunHistOutSaEspAuthAlgo       AuthAlgo,
+    pipSecTunHistPmtu                   INTEGER,
+    pipSecTunHistInOctets               Counter,
+    pipSecTunHistInPkts                 Counter,
+    pipSecTunHistInDropPkts             Counter,
+    pipSecTunHistInReplayDropPkts       Counter,
+    pipSecTunHistInAuths                Counter,
+    pipSecTunHistInAuthFails            Counter,
+    pipSecTunHistInDecrypts             Counter,
+    pipSecTunHistInDecryptFails         Counter,
+    pipSecTunHistOutOctets              Counter,
+    pipSecTunHistOutPkts                Counter,
+    pipSecTunHistOutDropPkts            Counter,
+    pipSecTunHistOutAuths               Counter,
+    pipSecTunHistOutAuthFails           Counter,
+    pipSecTunHistOutEncrypts            Counter,
+    pipSecTunHistOutEncryptFails        Counter
+}
+
+pipSecTunHistIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      not-accessible
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the IPsec Phase-2 Tunnel History Table.
+         The value of the index is a number which
+         begins at one and is incremented with each tunnel
+         that ends. The value
+         of this object will wrap at 2,147,483,647."
+    ::= { pipSecTunnelHistEntry 1 }
+
+pipSecTunHistTermReason OBJECT-TYPE
+    SYNTAX      INTEGER { other(1), normal(2), operRequest(3), 
+                    peerDelRequest(4), peerLost(5), 
+                    applicationInitiated(6), xauthFailure(7), 
+                    seqNumRollOver(8), checkPointReq(9) }
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The reason the IPsec Phase-2 Tunnel was terminated.
+         Possible reasons include:
+         1 = other
+         2 = normal termination
+         3 = operator request
+         4 = peer delete request was received
+         5 = contact with peer was lost
+         6 = applicationInitiated (eg: L2TP requesting the termination)
+         7 = failure of extended authentication
+         8 = local failure occurred
+         9 = operator initiated check point request"
+    ::= { pipSecTunnelHistEntry 2 }
+
+pipSecTunHistActiveIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the previously active
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 3 }
+
+pipSecTunHistIkeTunnelIndex OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The index of the associated IPsec Phase-1 Tunnel
+         (pikeTunIndex in the pikeTunnelTable)."
+    ::= { pipSecTunnelHistEntry 4 }
+
+pipSecTunHistLocalAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the local endpoint for the IPsec
+         Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 5 }
+
+pipSecTunHistRemoteAddr OBJECT-TYPE
+    SYNTAX      IPSIpAddress
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The IP address of the remote endpoint for the IPsec
+         Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 6 }
+
+pipSecTunHistKeyType OBJECT-TYPE
+    SYNTAX      KeyType
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The type of key used by the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 7 }
+
+pipSecTunHistEncapMode OBJECT-TYPE
+    SYNTAX      EncapMode
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encapsulation mode used by the
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 8 }
+
+pipSecTunHistLifeSize OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+--     UNITS       "KBytes"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiated LifeSize of the IPsec Phase-2 Tunnel in
+         kilobytes."
+    ::= { pipSecTunnelHistEntry 9 }
+
+pipSecTunHistLifeTime OBJECT-TYPE
+    SYNTAX      INTEGER (1..2147483647)
+--     UNITS       "Seconds"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The negotiated LifeTime of the IPsec Phase-2 Tunnel in
+         seconds."
+    ::= { pipSecTunnelHistEntry 10 }
+
+pipSecTunHistStartTime OBJECT-TYPE
+    SYNTAX      TimeStamp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The value of sysUpTime in hundredths of seconds
+         when the IPsec Phase-2 Tunnel was started."
+    ::= { pipSecTunnelHistEntry 11 }
+
+pipSecTunHistActiveTime OBJECT-TYPE
+    SYNTAX      TimeInterval
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The length of time the IPsec Phase-2 Tunnel has been
+         active in hundredths of seconds."
+    ::= { pipSecTunnelHistEntry 12 }
+
+pipSecTunHistTotalRefreshes OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "QM Exchanges"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of security association refreshes
+         performed."
+    ::= { pipSecTunnelHistEntry 13 }
+
+pipSecTunHistInSaDiffHellmanGrp OBJECT-TYPE
+    SYNTAX      DiffHellmanGrp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Diffie Hellman Group used by the inbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 15 }
+
+pipSecTunHistInSaEncryptAlgo OBJECT-TYPE
+    SYNTAX      EncryptAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encryption algorithm used by the inbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 16 }
+
+pipSecTunHistInSaAhAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the inbound
+         authentication header (AH) security association of
+         the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 17 }
+
+pipSecTunHistInSaEspAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the inbound
+         encapsulation security protocol (ESP)
+         security association of
+         the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 18 }
+
+pipSecTunHistOutSaDiffHellmanGrp OBJECT-TYPE
+    SYNTAX      DiffHellmanGrp
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Diffie Hellman Group used by the outbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 20 }
+
+pipSecTunHistOutSaEncryptAlgo OBJECT-TYPE
+    SYNTAX      EncryptAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The encryption algorithm used by the outbound security
+         association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 21 }
+
+pipSecTunHistOutSaAhAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the outbound
+         authentication header (AH) security association of
+         the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 22 }
+
+pipSecTunHistOutSaEspAuthAlgo OBJECT-TYPE
+    SYNTAX      AuthAlgo
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The authentication algorithm used by the inbound
+         ecapsulation security protocol (ESP)
+         security association of the IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 23 }
+
+pipSecTunHistPmtu OBJECT-TYPE
+    SYNTAX      INTEGER (21..576)
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The Path MTU that was determined for this IPsec
+         Phase-2 tunnel."
+    ::= { pipSecTunnelHistEntry 25 }
+
+pipSecTunHistInOctets OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of octets received by this IPsec
+         Phase-2 Tunnel.  This value is accumulated
+         BEFORE determining whether or not the packet should
+         be decompressed.  See also pipSecTunInOctWraps for
+         the number of times this counter has wrapped."
+    ::= { pipSecTunnelHistEntry 26 }
+
+pipSecTunHistInPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets received by this
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 32 }
+
+pipSecTunHistInDropPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped during
+         receive processing by this IPsec Phase-2 Tunnel.
+         This count does NOT include packets
+          dropped due to Anti-Replay processing."
+    ::= { pipSecTunnelHistEntry 33 }
+
+pipSecTunHistInReplayDropPkts OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Packets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped during
+         receive processing due to Anti-Replay processing
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 34 }
+
+pipSecTunHistInAuths OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Events"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound authentication's
+         performed
+          by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 35 }
+
+pipSecTunHistInAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Failures"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound authentication's
+         which ended in
+          failure by this IPsec Phase-2 Tunnel ."
+    ::= { pipSecTunnelHistEntry 36 }
+
+pipSecTunHistInDecrypts OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Packets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound decryption's performed
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 37 }
+
+pipSecTunHistInDecryptFails OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Failures"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of inbound decryption's
+         which ended in failure
+          by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 38 }
+
+pipSecTunHistOutOctets OBJECT-TYPE
+    SYNTAX      Counter
+--     UNITS       "Octets"
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of octets sent by this IPsec
+         Phase-2 Tunnel.  This value is accumulated
+         AFTER determining whether or not the
+         packet should be
+         compressed.  See also pipSecTunOutOctWraps for the
+         number of times this counter has wrapped."
+    ::= { pipSecTunnelHistEntry 39 }
+
+pipSecTunHistOutPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets sent by this
+         IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 45 }
+
+pipSecTunHistOutDropPkts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of packets dropped
+         during send processing
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 46 }
+
+pipSecTunHistOutAuths OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound authentication's performed
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 47 }
+
+pipSecTunHistOutAuthFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound authentication's
+         which ended in
+          failure by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 48 }
+
+pipSecTunHistOutEncrypts OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound encryption's performed
+         by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 49 }
+
+pipSecTunHistOutEncryptFails OBJECT-TYPE
+    SYNTAX      Counter
+    ACCESS      read-only
+    STATUS      mandatory
+    DESCRIPTION 
+        "The total number of outbound encryption's
+         which ended in failure
+          by this IPsec Phase-2 Tunnel."
+    ::= { pipSecTunnelHistEntry 50 }
+
+
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-- The IPsec TRAPs
+-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+pipSecMIBNotificationPrefix OBJECT IDENTIFIER ::= { picoIpSecFlowMonitorMIB 2 }
+pipSecMIBNotifications OBJECT IDENTIFIER ::= { pipSecMIBNotificationPrefix 0 }
+
+pikeTunnelStart TRAP-TYPE
+    ENTERPRISE  pipSecMIBNotificationPrefix
+    VARIABLES   { pikePeerLocalAddr, pikePeerRemoteAddr, pikeTunLifeTime }
+--     STATUS      mandatory
+    DESCRIPTION 
+        "This notification is generated when an IPsec Phase-1
+         IKE Tunnel becomes active."
+    ::= 1
+
+pikeTunnelStop TRAP-TYPE
+    ENTERPRISE  pipSecMIBNotificationPrefix
+    VARIABLES   { pikeTunHistTermReason, pikePeerLocalAddr, 
+                  pikePeerRemoteAddr, pikeTunActiveTime }
+--     STATUS      mandatory
+    DESCRIPTION 
+        "This notification is generated when an IPsec Phase-1
+         IKE Tunnel becomes inactive."
+    ::= 2
+
+pipSecTunnelStart TRAP-TYPE
+    ENTERPRISE  pipSecMIBNotificationPrefix
+    VARIABLES   { pipSecTunLifeTime, pipSecTunLifeSize }
+--     STATUS      mandatory
+    DESCRIPTION 
+        "This notification is generated when an IPsec Phase-2
+         Tunnel becomes active."
+    ::= 7
+
+pipSecTunnelStop TRAP-TYPE
+    ENTERPRISE  pipSecMIBNotificationPrefix
+    VARIABLES   { pipSecTunHistTermReason, pipSecTunActiveTime }
+--     STATUS      mandatory
+    DESCRIPTION 
+        "This notification is generated when an IPsec Phase-2
+         Tunnel becomes inactive."
+    ::= 8
+
+pipSecEarlyTunTerm TRAP-TYPE
+    ENTERPRISE  pipSecMIBNotificationPrefix
+    VARIABLES   { pipSecTunActiveTime, pipSecSpiProtocol }
+--     STATUS      mandatory
+    DESCRIPTION 
+        "This notification is generated when an an IPsec Phase-2
+         Tunnel is terminated earily or before expected."
+    ::= 11
+
+END -- end of module PICO-IPSEC-FLOW-MONITOR-MIB.mib
